@@ -1,0 +1,24 @@
+{
+  "cwd": "C:\\Users\\rafif\\ngopilosofi",
+  "type": [
+    "capacitor"
+  ],
+  "name": "Ngopilosofi",
+  "pkg": "com.ngopilosofi.app",
+  "framework": "vue",
+  "template": "blank",
+  "cssPreProcessor": false,
+  "bundler": "vite",
+  "capacitor": {
+    "platforms": [
+      "android"
+    ]
+  },
+  "theming": {
+    "customColor": false,
+    "color": "#007aff",
+    "darkMode": false,
+    "iconFonts": true
+  },
+  "customBuild": false
+}
