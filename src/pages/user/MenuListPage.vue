@@ -209,17 +209,14 @@ export default {
         tambahan: [...this.selectedAddons],
         jumlah: this.quantity,
         totalHarga: totalHarga,
-        selected: true // Menambahkan 'selected' untuk konsistensi
+        selected: true 
       };
 
-      // Ambil data cart yang sudah ada dari localStorage
       let existingCart = JSON.parse(localStorage.getItem('/user/cart/') || '[]');
 
-      // Update cart dengan item yang baru ditambahkan
       existingCart.push(cartItem);
       localStorage.setItem('/user/cart/', JSON.stringify(existingCart));
 
-      // Menampilkan toast setelah produk ditambahkan
       this.showToast('Produk ditambahkan ke keranjang');
       this.popupOpened = false;
     },

@@ -1,13 +1,11 @@
 <template>
   <f7-page name="login" class="login-page">
-    <!-- Header dengan logo -->
     <div class="login-header">
       <img src="../../logo.png" alt="Ngopilosofi Logo" class="login-logo" />
       <h1 class="login-title">Ngopilosofi</h1>
       <p class="login-subtitle">Masuk ke dunia ngopi penuh filosofi</p>
     </div>
 
-    <!-- Form Login -->
     <form class="login-form">
       <div class="form-group">
         <label for="email" class="form-label">Email</label>
@@ -31,7 +29,6 @@
       </div>
     </form>
 
-    <!-- Tombol Aksi -->
     <div class="login-actions">
       <f7-link href="/home/" class="button button-fill login-button">
         Login

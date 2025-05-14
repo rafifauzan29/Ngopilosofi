@@ -6,10 +6,9 @@ import '../css/icons.css';
 import '../css/app.css';
 import App from '../components/app.vue';
 
-// Konfigurasi Framework7 dengan animasi
 const framework7Params = {
-  // Aktifkan animasi untuk berbagai komponen
-  animate: true, // Aktifkan animasi global
+
+  animate: true, 
   view: {
     animate: true,
   },
@@ -21,17 +20,12 @@ const framework7Params = {
   }
 };
 
-// Init Framework7-Vue Plugin dengan parameter
 Framework7.use(Framework7Vue, framework7Params);
 
-// Init App
 const app = createApp(App);
 
-// Inject Framework7 instance globally
 app.config.globalProperties.$f7 = f7;
 
-// Register Framework7 Vue components
 registerComponents(app);
 
-// Mount the app
 app.mount('#app');

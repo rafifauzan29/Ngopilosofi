@@ -167,7 +167,6 @@ export default {
       const savedCart = localStorage.getItem('/user/cart/');
       this.cartItems = savedCart ? JSON.parse(savedCart) : [];
       
-      // Initialize selected property if not exists
       this.cartItems = this.cartItems.map(item => ({
         ...item,
         selected: item.selected !== undefined ? item.selected : true
@@ -296,7 +295,6 @@ export default {
       }));
       this.saveCart();
     },
-    // Helper function to check if two addon arrays are identical
     areAddonsIdentical(a, b) {
       if (a.length !== b.length) return false;
       const aNames = a.map(x => x.nama).sort();

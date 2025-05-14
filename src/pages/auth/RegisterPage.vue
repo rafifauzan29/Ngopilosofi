@@ -1,13 +1,11 @@
 <template>
   <f7-page name="register" class="register-page">
-    <!-- Header dengan logo -->
     <div class="register-header">
       <img src="../../logo.png" alt="Ngopilosofi Logo" class="register-logo" />
       <h1 class="register-title">Daftar Akun</h1>
       <p class="register-subtitle">Bergabung bersama Ngopilosofi</p>
     </div>
 
-    <!-- Form Register -->
     <form class="register-form">
       <div class="form-group">
         <label for="name" class="form-label">Nama Lengkap</label>
@@ -51,7 +49,6 @@
       </div>
     </form>
 
-    <!-- Tombol Aksi -->
     <div class="register-actions">
       <f7-link href="/home/" class="button button-fill register-button">
         Daftar

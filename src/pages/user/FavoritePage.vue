@@ -119,34 +119,26 @@ export default {
     },
 
     async addToCart() {
-      // Hitung total harga tambahan
       const totalAddonPrice = this.selectedAddons.reduce((sum, addon) => sum + addon.harga, 0);
-      // Hitung total harga akhir
       const totalHarga = (this.selectedItem.harga + totalAddonPrice) * this.quantity;
 
-      // Buat objek item keranjang
       const cartItem = {
         produk: this.selectedItem,
         tambahan: [...this.selectedAddons],
         jumlah: this.quantity,
         totalHarga: totalHarga,
-        selected: true // Untuk keperluan checkout nanti
+        selected: true 
       };
 
-      // Ambil data cart dari localStorage
       let existingCart = JSON.parse(localStorage.getItem('/user/cart/') || '[]');
 
-      // Tambahkan item baru
       existingCart.push(cartItem);
 
-      // Simpan kembali ke localStorage
       localStorage.setItem('/user/cart/', JSON.stringify(existingCart));
 
-      // Tampilkan toast notifikasi
       this.showToast('Produk berhasil ditambahkan ke keranjang!');
       this.popupOpened = false;
 
-      // Emit event jika ingin update badge cart
       this.$f7.emit('cartUpdated', existingCart.length);
     },
     showToast(message) {

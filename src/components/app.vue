@@ -59,13 +59,10 @@ export default {
       f7ready(() => {
         if (device.cordova) cordovaApp.init(f7);
 
-        // Initial load
         updateCartCount();
 
-        // Listen to storage events (changes from other tabs)
         window.addEventListener('storage', handleStorageEvent);
 
-        // Listen to custom events (changes in current tab)
         cartUpdateListener = f7.on('cartUpdated', updateCartCount);
       });
     });
