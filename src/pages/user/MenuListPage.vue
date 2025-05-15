@@ -90,7 +90,8 @@ export default {
       selectedKategori: 'Semua',
       kategoriList: [
         'Semua',
-        'Best Offers',
+        'Baru',
+        'Paling Laku',
         'Kopi',
         'Susu',
         'Makanan',
@@ -103,7 +104,7 @@ export default {
           nama: 'Kopi Susu Aren',
           harga: 18000,
           gambar: '/images/menu/kopisusuaren.webp',
-          kategori: 'Best Offers',
+          kategori: 'Paling Laku',
           favorite: false,
           deskripsi:
             'Perpaduan sempurna antara kopi robusta, susu segar, dan gula aren asli yang memberikan rasa manis alami dengan aroma khas kopi yang nikmat.',
@@ -159,6 +160,17 @@ export default {
             'Roti gandum panggang dengan isian coklat leleh yang melimpah, disajikan hangat dengan taburan gula halus.',
           tambahan: [{ nama: 'Keju Tambahan', harga: 5000 }],
         },
+        {
+          id: 6,
+          nama: 'Creamy Latte',
+          harga: 23000,
+          gambar: 'images/menu/creamylatte.png',
+          kategori: ['Baru', 'Kopi'],
+          favorite: false,
+          deskripsi:
+            'Creamy Latte dengan perpaduan espresso dan susu creamy yang lembut, disajikan hangat atau dingin untuk menyegarkan harimu.',
+          tambahan: [{ nama: 'Extra Shot Espresso', harga: 5000 }],
+        },
       ],
       popupOpened: false,
       selectedItem: null,
@@ -170,7 +182,10 @@ export default {
     filteredMenu() {
       return this.semuaMenu.filter((item) => {
         const matchKategori =
-          this.selectedKategori === 'Semua' || item.kategori === this.selectedKategori;
+          this.selectedKategori === 'Semua' ||
+          (Array.isArray(item.kategori)
+            ? item.kategori.includes(this.selectedKategori)
+            : item.kategori === this.selectedKategori);
         const matchKeyword = item.nama.toLowerCase().includes(this.keyword.toLowerCase());
         return matchKategori && matchKeyword;
       });
@@ -292,6 +307,9 @@ export default {
         }
       });
     }
+  },
+  mounted() {
+    localStorage.setItem('/menu/all/', JSON.stringify(this.semuaMenu));
   },
 };
 </script>
