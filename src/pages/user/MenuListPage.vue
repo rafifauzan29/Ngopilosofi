@@ -275,7 +275,7 @@ export default {
       f7.toast
         .create({
           text: message,
-          closeTimeout: 2000,
+          closeTimeout: 3000,
           cssClass: 'success-toast',
         })
         .open();
