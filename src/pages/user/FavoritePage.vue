@@ -2,6 +2,7 @@
   <f7-page class="page-bg">
     <f7-block>
       <f7-block v-if="favoriteItems.length > 0" class="favorites-title">My Favorites</f7-block>
+
       <div v-if="favoriteItems.length > 0">
         <div class="menu-grid">
           <div v-for="(item, index) in favoriteItems" :key="index" class="menu-card">
@@ -19,10 +20,13 @@
           </div>
         </div>
       </div>
+
       <div v-else class="empty-state">
         <f7-icon ios="f7:heart" aurora="f7:heart" md="material:favorite_border" size="48px" color="#331c2c"></f7-icon>
         <div class="empty-text">No favorites yet</div>
-        <f7-button href="/user/menu-list/" class="browse-button">Browse Menu</f7-button>
+        <f7-button href="/user/menu-list/" class="browse-button">
+          Browse Menu
+        </f7-button>
       </div>
     </f7-block>
 
@@ -45,7 +49,7 @@
             <f7-list-item v-for="(addon, index) in selectedItem?.tambahan" :key="index" :title="addon.nama"
               :after="formatRupiah(addon.harga)">
               <template #media>
-                <f7-checkbox v-model="selectedAddons" :value="addon" />
+                <f7-checkbox :checked="isAddonSelected(addon)" @change="toggleAddon(addon)" />
               </template>
             </f7-list-item>
           </f7-list>
@@ -66,7 +70,6 @@
 </template>
 
 <script>
-
 import { f7 } from 'framework7-vue';
 
 export default {
@@ -85,25 +88,32 @@ export default {
       return new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
-        minimumFractionDigits: 0
+        minimumFractionDigits: 0,
       }).format(angka);
     },
     tambahPesanan(item) {
       this.$f7.dialog.alert(`Tambahkan: ${item.nama}`);
     },
     removeFavorite(item) {
-      const index = this.favoriteItems.findIndex(fav => fav.nama === item.nama);
+      const index = this.favoriteItems.findIndex(
+        (fav) => fav.nama === item.nama
+      );
       if (index !== -1) {
         this.favoriteItems.splice(index, 1);
       }
 
-      localStorage.setItem('/user/favorite/', JSON.stringify(this.favoriteItems));
+      localStorage.setItem(
+        '/user/favorite/',
+        JSON.stringify(this.favoriteItems)
+      );
 
-      this.$f7.toast.create({
-        text: 'Removed from favorites',
-        closeTimeout: 2000,
-        destroyOnClose: true
-      }).open();
+      this.$f7.toast
+        .create({
+          text: 'Removed from favorites',
+          closeTimeout: 2000,
+          destroyOnClose: true,
+        })
+        .open();
     },
     openPopup(item) {
       this.selectedItem = item;
@@ -117,9 +127,22 @@ export default {
     decreaseQuantity() {
       if (this.quantity > 1) this.quantity--;
     },
-
+    isAddonSelected(addon) {
+      return this.selectedAddons.some((a) => a.nama === addon.nama);
+    },
+    toggleAddon(addon) {
+      const index = this.selectedAddons.findIndex((a) => a.nama === addon.nama);
+      if (index === -1) {
+        this.selectedAddons.push(addon);
+      } else {
+        this.selectedAddons.splice(index, 1);
+      }
+    },
     async addToCart() {
-      const totalAddonPrice = this.selectedAddons.reduce((sum, addon) => sum + addon.harga, 0);
+      const totalAddonPrice = this.selectedAddons.reduce(
+        (sum, addon) => sum + addon.harga,
+        0
+      );
       const totalHarga = (this.selectedItem.harga + totalAddonPrice) * this.quantity;
 
       const cartItem = {
@@ -127,36 +150,59 @@ export default {
         tambahan: [...this.selectedAddons],
         jumlah: this.quantity,
         totalHarga: totalHarga,
-        selected: true 
+        selected: true,
       };
 
       let existingCart = JSON.parse(localStorage.getItem('/user/cart/') || '[]');
 
-      existingCart.push(cartItem);
+      const isSameAddons = (a, b) => {
+        if (a.length !== b.length) return false;
+        const aSorted = [...a].map(x => x.nama).sort();
+        const bSorted = [...b].map(x => x.nama).sort();
+        return JSON.stringify(aSorted) === JSON.stringify(bSorted);
+      };
+
+      const existingIndex = existingCart.findIndex(
+        item =>
+          item.produk.id === cartItem.produk.id &&
+          isSameAddons(item.tambahan, cartItem.tambahan)
+      );
+
+      if (existingIndex !== -1) {
+        const existingItem = existingCart[existingIndex];
+        const newJumlah = existingItem.jumlah + cartItem.jumlah;
+        const newTotalHarga = (cartItem.produk.harga +
+          cartItem.tambahan.reduce((sum, addon) => sum + addon.harga, 0)) * newJumlah;
+
+        existingCart[existingIndex].jumlah = newJumlah;
+        existingCart[existingIndex].totalHarga = newTotalHarga;
+      } else {
+        existingCart.push(cartItem);
+      }
 
       localStorage.setItem('/user/cart/', JSON.stringify(existingCart));
 
-      this.showToast('Produk berhasil ditambahkan ke keranjang!');
+      this.showToast('Produk ditambahkan ke keranjang');
       this.popupOpened = false;
-
-      this.$f7.emit('cartUpdated', existingCart.length);
     },
     showToast(message) {
-      f7.toast.create({
-        text: message,
-        position: 'bottom',
-        closeTimeout: 2000,
-        cssClass: 'success-toast'
-      }).open();
+      f7.toast
+        .create({
+          text: message,
+          position: 'bottom',
+          closeTimeout: 2000,
+          cssClass: 'success-toast',
+        })
+        .open();
     },
     loadFavorite() {
       const savedFavorite = localStorage.getItem('/user/favorite/');
       this.favoriteItems = savedFavorite ? JSON.parse(savedFavorite) : [];
-    }
+    },
   },
   mounted() {
     this.loadFavorite();
-  }
+  },
 };
 </script>
 

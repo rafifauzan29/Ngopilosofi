@@ -21,7 +21,7 @@
             <f7-icon :ios="item.favorite ? 'f7:heart_fill' : 'f7:heart'"
               :aurora="item.favorite ? 'f7:heart_fill' : 'f7:heart'"
               :md="item.favorite ? 'material:favorite' : 'material:favorite_border'"
-              :color="item.favorite ? 'red' : '#331c2c'"></f7-icon>
+              :color="item.favorite ? 'red' : '#331c2c'" />
           </div>
           <img :src="item.gambar" class="menu-image" />
           <div class="menu-details">
@@ -54,12 +54,17 @@
             <f7-list-item v-for="(addon, index) in selectedItem?.tambahan" :key="index" :title="addon.nama"
               :after="formatRupiah(addon.harga)">
               <template #media>
-                <f7-checkbox v-model="selectedAddons" :value="addon" />
+                <f7-checkbox :checked="isAddonSelected(addon)" @change="toggleAddon(addon)" />
               </template>
             </f7-list-item>
           </f7-list>
 
-          <div style="display: flex; align-items: center; justify-content: center; margin: 20px;">
+          <div style="
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              margin: 20px;
+            ">
             <f7-button small @click="decreaseQuantity">-</f7-button>
             <div style="margin: 0 15px;">{{ quantity }}</div>
             <f7-button small @click="increaseQuantity">+</f7-button>
@@ -83,64 +88,76 @@ export default {
     return {
       keyword: '',
       selectedKategori: 'Semua',
-      kategoriList: ['Semua', 'Best Offers', 'Kopi', 'Susu', 'Makanan', 'Minuman', 'Snack'],
+      kategoriList: [
+        'Semua',
+        'Best Offers',
+        'Kopi',
+        'Susu',
+        'Makanan',
+        'Minuman',
+        'Snack',
+      ],
       semuaMenu: [
         {
+          id: 1,
           nama: 'Kopi Susu Aren',
           harga: 18000,
           gambar: '/images/menu/kopisusuaren.webp',
           kategori: 'Best Offers',
           favorite: false,
-          deskripsi: 'Perpaduan sempurna antara kopi robusta, susu segar, dan gula aren asli yang memberikan rasa manis alami dengan aroma khas kopi yang nikmat.',
+          deskripsi:
+            'Perpaduan sempurna antara kopi robusta, susu segar, dan gula aren asli yang memberikan rasa manis alami dengan aroma khas kopi yang nikmat.',
           tambahan: [
             { nama: 'Extra Shot Espresso', harga: 5000 },
-            { nama: 'Susu Almond', harga: 7000 }
-          ]
+            { nama: 'Susu Almond', harga: 7000 },
+          ],
         },
         {
+          id: 2,
           nama: 'Signature Latte',
           harga: 22000,
           gambar: 'images/menu/signaturelatte.jpeg',
           kategori: 'Kopi',
           favorite: false,
-          deskripsi: 'Latte dengan racikan khusus menggunakan biji kopi pilihan dan susu segar yang menghasilkan tekstur creamy dengan lapisan foam yang sempurna.',
+          deskripsi:
+            'Latte dengan racikan khusus menggunakan biji kopi pilihan dan susu segar yang menghasilkan tekstur creamy dengan lapisan foam yang sempurna.',
           tambahan: [
             { nama: 'Syrup Vanilla', harga: 4000 },
-            { nama: 'Topping Boba', harga: 6000 }
-          ]
+            { nama: 'Topping Boba', harga: 6000 },
+          ],
         },
         {
+          id: 3,
           nama: 'Espresso',
           harga: 15000,
           gambar: 'images/menu/ekspresso.jpeg',
           kategori: 'Kopi',
           favorite: false,
-          deskripsi: 'Ekstrak kopi murni yang diseduh dengan tekanan tinggi, menghasilkan minuman pekat dengan crema yang tebal dan rasa yang intens.',
-          tambahan: [
-            { nama: 'Extra Shot', harga: 5000 }
-          ]
+          deskripsi:
+            'Ekstrak kopi murni yang diseduh dengan tekanan tinggi, menghasilkan minuman pekat dengan crema yang tebal dan rasa yang intens.',
+          tambahan: [{ nama: 'Extra Shot', harga: 5000 }],
         },
         {
+          id: 4,
           nama: 'Susu Coklat',
           harga: 17000,
           gambar: 'images/menu/susucoklat.webp',
           kategori: 'Susu',
           favorite: false,
-          deskripsi: 'Minuman susu dengan coklat premium yang lembut, cocok untuk menemani saat santai maupun bekerja.',
-          tambahan: [
-            { nama: 'Whipped Cream', harga: 4000 }
-          ]
+          deskripsi:
+            'Minuman susu dengan coklat premium yang lembut, cocok untuk menemani saat santai maupun bekerja.',
+          tambahan: [{ nama: 'Whipped Cream', harga: 4000 }],
         },
         {
+          id: 5,
           nama: 'Roti Bakar Coklat',
           harga: 20000,
           gambar: 'images/menu/rotibakar.jpeg',
           kategori: 'Makanan',
           favorite: false,
-          deskripsi: 'Roti gandum panggang dengan isian coklat leleh yang melimpah, disajikan hangat dengan taburan gula halus.',
-          tambahan: [
-            { nama: 'Keju Tambahan', harga: 5000 }
-          ]
+          deskripsi:
+            'Roti gandum panggang dengan isian coklat leleh yang melimpah, disajikan hangat dengan taburan gula halus.',
+          tambahan: [{ nama: 'Keju Tambahan', harga: 5000 }],
         },
       ],
       popupOpened: false,
@@ -153,31 +170,28 @@ export default {
     filteredMenu() {
       return this.semuaMenu.filter((item) => {
         const matchKategori =
-          this.selectedKategori === 'Semua' ||
-          item.kategori === this.selectedKategori;
-        const matchKeyword = item.nama
-          .toLowerCase()
-          .includes(this.keyword.toLowerCase());
+          this.selectedKategori === 'Semua' || item.kategori === this.selectedKategori;
+        const matchKeyword = item.nama.toLowerCase().includes(this.keyword.toLowerCase());
         return matchKategori && matchKeyword;
       });
     },
     favoriteItems() {
-      return this.semuaMenu.filter(item => item.favorite);
-    }
+      return this.semuaMenu.filter((item) => item.favorite);
+    },
   },
   methods: {
     formatRupiah(angka) {
       return new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
-        minimumFractionDigits: 0
+        minimumFractionDigits: 0,
       }).format(angka);
     },
     tambahPesanan(item) {
       this.$f7router.navigate('/detail-produk/', {
         props: {
-          produk: item
-        }
+          produk: item,
+        },
       });
     },
     onSearch(event) {
@@ -199,9 +213,22 @@ export default {
     decreaseQuantity() {
       if (this.quantity > 1) this.quantity--;
     },
-    
+    isAddonSelected(addon) {
+      return this.selectedAddons.some((a) => a.nama === addon.nama);
+    },
+    toggleAddon(addon) {
+      const index = this.selectedAddons.findIndex((a) => a.nama === addon.nama);
+      if (index === -1) {
+        this.selectedAddons.push(addon);
+      } else {
+        this.selectedAddons.splice(index, 1);
+      }
+    },
     async addToCart() {
-      const totalAddonPrice = this.selectedAddons.reduce((sum, addon) => sum + addon.harga, 0);
+      const totalAddonPrice = this.selectedAddons.reduce(
+        (sum, addon) => sum + addon.harga,
+        0
+      );
       const totalHarga = (this.selectedItem.harga + totalAddonPrice) * this.quantity;
 
       const cartItem = {
@@ -209,38 +236,63 @@ export default {
         tambahan: [...this.selectedAddons],
         jumlah: this.quantity,
         totalHarga: totalHarga,
-        selected: true 
+        selected: true,
       };
 
       let existingCart = JSON.parse(localStorage.getItem('/user/cart/') || '[]');
 
-      existingCart.push(cartItem);
+      const isSameAddons = (a, b) => {
+        if (a.length !== b.length) return false;
+        const aSorted = [...a].map(x => x.nama).sort();
+        const bSorted = [...b].map(x => x.nama).sort();
+        return JSON.stringify(aSorted) === JSON.stringify(bSorted);
+      };
+
+      const existingIndex = existingCart.findIndex(
+        item =>
+          item.produk.id === cartItem.produk.id &&
+          isSameAddons(item.tambahan, cartItem.tambahan)
+      );
+
+      if (existingIndex !== -1) {
+        const existingItem = existingCart[existingIndex];
+        const newJumlah = existingItem.jumlah + cartItem.jumlah;
+        const newTotalHarga = (cartItem.produk.harga +
+          cartItem.tambahan.reduce((sum, addon) => sum + addon.harga, 0)) * newJumlah;
+
+        existingCart[existingIndex].jumlah = newJumlah;
+        existingCart[existingIndex].totalHarga = newTotalHarga;
+      } else {
+        existingCart.push(cartItem);
+      }
+
       localStorage.setItem('/user/cart/', JSON.stringify(existingCart));
 
       this.showToast('Produk ditambahkan ke keranjang');
       this.popupOpened = false;
     },
-
     showToast(message) {
-      f7.toast.create({
-        text: message,
-        closeTimeout: 2000,
-        cssClass: 'success-toast'
-      }).open();
+      f7.toast
+        .create({
+          text: message,
+          closeTimeout: 2000,
+          cssClass: 'success-toast',
+        })
+        .open();
     },
   },
   created() {
     const savedFavorite = localStorage.getItem('/user/favorite/');
     if (savedFavorite) {
       const favorite = JSON.parse(savedFavorite);
-      this.semuaMenu.forEach(item => {
-        const isFavorite = favorite.some(fav => fav.nama === item.nama);
+      this.semuaMenu.forEach((item) => {
+        const isFavorite = favorite.some((fav) => fav.nama === item.nama);
         if (isFavorite) {
           item.favorite = true;
         }
       });
     }
-  }
+  },
 };
 </script>
 
@@ -465,5 +517,4 @@ export default {
   border-radius: 12px;
   margin-top: 16px;
 }
-
 </style>
