@@ -2,33 +2,49 @@
   <f7-page class="page-bg">
     <f7-navbar title="Ngopilosofi" class="navbar-custom" />
 
-    <!-- Banner Hero -->
     <f7-block class="banner-block">
       <div class="banner-text">
         <h1>Selamat Datang di Ngopilosofi ☕</h1>
         <p>Temukan kopi favorit dan camilan lezat pilihan kami.</p>
-          <f7-link href="/user/menu-list/" class="button button-fill btn-order">
-            Pesan Sekarang
-          </f7-link>
+        <f7-link href="/user/menu-list/" class="button button-fill btn-order">
+          Pesan Sekarang
+        </f7-link>
       </div>
     </f7-block>
 
-    <!-- Kategori Cepat -->
+    <f7-block class="point-block">
+      <div class="point-info">
+        <span>Poin Saya: <strong>{{ userPoint }}</strong></span>
+        <f7-link href="/user/point/" class="button button-outline btn-point">
+          Lihat Detail
+        </f7-link>
+      </div>
+    </f7-block>
+
     <f7-block>
       <h2 class="section-title">Kategori Populer</h2>
       <div class="kategori-grid">
-        <div v-for="kategori in kategoriPopuler" :key="kategori" class="kategori-card" @click="goToKategori(kategori)">
+        <div
+          v-for="kategori in kategoriPopuler"
+          :key="kategori"
+          class="kategori-card"
+          @click="goToKategori(kategori)"
+        >
           <f7-icon ios="f7:star_fill" md="material:star" color="#331c2c" size="large" />
           <div class="kategori-name">{{ kategori }}</div>
         </div>
       </div>
     </f7-block>
 
-    <!-- Menu Terbaru -->
     <f7-block>
       <h2 class="section-title">Menu Terbaru</h2>
       <div class="menu-favorite-grid">
-        <div v-for="item in terbaruItems" :key="item.id" class="menu-favorite-card" @click="openDetail(item)">
+        <div
+          v-for="item in terbaruItems"
+          :key="item.id"
+          class="menu-favorite-card"
+          @click="openDetail(item)"
+        >
           <img :src="formatImagePath(item.gambar)" alt="Menu Image" />
           <div class="menu-fav-name">{{ item.nama }}</div>
           <div class="menu-fav-price">{{ formatRupiah(item.harga) }}</div>
@@ -47,13 +63,13 @@ export default {
   data() {
     return {
       kategoriPopuler: ['Kopi', 'Susu', 'Makanan', 'Snack', 'Minuman'],
-      semuaMenu: [], // Data menu diambil dari localStorage
+      semuaMenu: [],
+      userPoint: 0,
     };
   },
   computed: {
     terbaruItems() {
       if (!this.semuaMenu || this.semuaMenu.length === 0) return [];
-      // Filter menu yang kategori-nya 'Baru' (string atau array)
       return this.semuaMenu.filter((item) => {
         if (Array.isArray(item.kategori)) {
           return item.kategori.includes('Baru');
@@ -74,13 +90,11 @@ export default {
       this.$f7router.navigate('/menu-list', { query: { kategori } });
     },
     openDetail(item) {
-      // Gunakan cara navigasi props sesuai framework7-vue
       this.$f7router.navigate('/detail-produk', {
         props: { produk: item },
       });
     },
     formatImagePath(path) {
-      // Jika path gambar relatif tanpa "/", tambahkan "/" di depan agar benar
       if (path && !path.startsWith('/')) {
         return '/' + path;
       }
@@ -88,17 +102,18 @@ export default {
     },
   },
   mounted() {
-    // Ambil data menu dari localStorage
     const storedMenu = JSON.parse(localStorage.getItem('/menu/all/') || '[]');
     this.semuaMenu = storedMenu;
+
+    const point = parseInt(localStorage.getItem('user_point') || '0');
+    this.userPoint = point;
   },
 };
 </script>
 
 <style scoped>
 .page-bg {
-  background-color: #fff9f5;
-  min-height: 100vh;
+  background-color: #ede0d1;
 }
 
 .banner-block {
@@ -120,14 +135,37 @@ export default {
 }
 
 .btn-order {
-  /* background-color: #687906; */
   color: #ffffff;
   font-weight: 600;
 }
 
+.point-block {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f5f1ed;
+  padding: 15px 20px;
+  border-radius: 15px;
+  margin: 15px 10px;
+}
+
+.point-info {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: #331c2c;
+}
+
+.btn-point {
+  font-weight: 600;
+  color: #331c2c;
+}
+
 .kategori-grid {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
   justify-content: center;
 }
@@ -138,7 +176,7 @@ export default {
   border-radius: 15px;
   text-align: center;
   cursor: pointer;
-  width: 100px;
+  width: 80px;
   user-select: none;
   transition: background-color 0.3s ease;
 }
