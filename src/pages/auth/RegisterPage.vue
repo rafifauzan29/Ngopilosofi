@@ -53,10 +53,13 @@
       <f7-link href="/home/" class="button button-fill register-button">
         Daftar
       </f7-link>
+
       <p class="login-text">
         Sudah punya akun?
         <f7-link href="/login/" class="login-link">Masuk di sini</f7-link>
       </p>
+
+      <f7-link href="/user/home/" class="back-link">Kembali ke Beranda</f7-link>
     </div>
   </f7-page>
 </template>
@@ -148,11 +151,19 @@ export default {
   margin-top: 16px;
   font-size: 14px;
   color: #5a3c4c;
+  text-align: center;
 }
 
 .login-link {
   color: #331c2c;
   font-weight: bold;
   margin-left: 4px;
+}
+
+.back-link {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #331c2c;
+  text-decoration: underline;
 }
 </style>

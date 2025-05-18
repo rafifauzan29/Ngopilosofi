@@ -1,7 +1,7 @@
 <template>
   <f7-app v-bind="f7params">
     <f7-view main class="safe-areas" url="/" :browser-history="true" :animate="false">
-      <f7-navbar>
+      <f7-navbar v-if="showHeader">
         <f7-nav-title class="brand-title">
           <div class="brand-logo">Ngopilosofi</div>
           <div class="brand-subtitle">Philosophy in Every Sip</div>
@@ -13,7 +13,7 @@
         </f7-nav-right>
       </f7-navbar>
 
-      <f7-toolbar tabbar labels bottom class="toolbar-custom">
+      <f7-toolbar v-if="showHeader" tabbar labels bottom class="toolbar-custom">
         <f7-link href="/user/home/" icon-f7="house" text="Home" />
         <f7-link href="/user/favorite/" icon-f7="heart" text="Favorit" />
         <f7-link href="/user/menu-list/" icon-f7="square_grid_2x2" text="Menu" />
@@ -25,7 +25,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { f7, f7ready } from 'framework7-vue';
 import { getDevice } from 'framework7/lite-bundle';
 import cordovaApp from '../js/cordova-app';
@@ -36,9 +36,17 @@ export default {
   setup() {
     const device = getDevice();
     const cartCount = ref(0);
+    const currentPath = ref(window.location.pathname);
     let storageListener = null;
     let cartUpdateListener = null;
-
+    const hideHeaderRoutes = ['/login/', '/register/'];
+    const normalizePath = (path) => {
+      return path.endsWith('/') ? path : path + '/';
+    };
+    const showHeader = computed(() => {
+      const normalizedPath = normalizePath(currentPath.value);
+      return !hideHeaderRoutes.includes(normalizedPath);
+    });
     const updateCartCount = () => {
       try {
         const cart = JSON.parse(localStorage.getItem('/user/cart/') || '[]');
@@ -59,10 +67,15 @@ export default {
       f7ready(() => {
         if (device.cordova) cordovaApp.init(f7);
 
+        currentPath.value = f7.views.main.router.url;
+
+        f7.on('routeChange', (newRoute) => {
+          currentPath.value = newRoute.url;
+          console.log('Route changed to:', newRoute.url); 
+        });
+
         updateCartCount();
-
         window.addEventListener('storage', handleStorageEvent);
-
         cartUpdateListener = f7.on('cartUpdated', updateCartCount);
       });
     });
@@ -96,6 +109,7 @@ export default {
     return {
       f7params,
       cartCount,
+      showHeader, 
     };
   },
 };
@@ -143,5 +157,10 @@ export default {
 .cart-badge {
   left: -10px;
   bottom: 10px;
+}
+
+.no-header .navbar,
+.no-header .toolbar {
+  display: none !important;
 }
 </style>
