@@ -28,7 +28,6 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { f7, f7ready } from 'framework7-vue';
 import { getDevice } from 'framework7/lite-bundle';
-import cordovaApp from '../js/cordova-app';
 import store from '../js/store';
 import routes from '../js/routes';
 
