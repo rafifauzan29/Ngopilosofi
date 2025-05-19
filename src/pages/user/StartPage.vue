@@ -52,6 +52,7 @@
 <script>
 import Swiper from 'swiper/bundle';
 import 'swiper/swiper-bundle.css';
+import { f7 } from 'framework7-vue';
 
 export default {
   name: 'StartPage',
@@ -72,7 +73,7 @@ export default {
   },
   methods: {
     goToLogin() {
-      this.$f7.views.main.router.navigate('/login/');
+      f7.views.main.router.navigate('/login/');
     },
   },
 };
@@ -188,7 +189,7 @@ html, body, .page, .start-page {
   color: #331c2c;
   width: 40px;
   height: 40px;
-  background: rgba(237, 224, 209, 0.9);
+  background: rgb(255, 255, 255);
   border-radius: 50%;
   border: 2px solid #a58e7c;
   display: flex;

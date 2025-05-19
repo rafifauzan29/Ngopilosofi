@@ -145,9 +145,8 @@ export default {
 </script>
 
 <style scoped>
-.navbar-custom {
-  background-color: white;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+::v-deep(.navbar-inner) {
+  background-color: white !important;
 }
 
 .brand-title {
