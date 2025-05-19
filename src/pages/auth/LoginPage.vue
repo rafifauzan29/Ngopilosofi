@@ -25,12 +25,8 @@
           Belum punya akun?
           <f7-link href="/register/" class="register-link">Daftar Sekarang</f7-link>
         </p>
-
-        <f7-link href="/user/home/" class="back-link">Kembali ke Beranda</f7-link>
       </div>
     </form>
-
-    <p v-if="error" class="error-message">{{ error }}</p>
   </f7-page>
 </template>
 
@@ -97,7 +93,7 @@ export default {
 <style scoped>
 .login-page {
   background-color: #ede0d1;
-  padding: 20px 20px;
+  padding: 100px 20px;
   display: flex;
   flex-direction: column;
   min-height: 100%;
@@ -182,12 +178,5 @@ export default {
   color: #331c2c;
   font-weight: bold;
   margin-left: 4px;
-}
-
-.back-link {
-  margin-top: 12px;
-  font-size: 14px;
-  color: #331c2c;
-  text-decoration: underline;
 }
 </style>

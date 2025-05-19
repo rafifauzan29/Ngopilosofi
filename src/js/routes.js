@@ -2,6 +2,7 @@ import DashboardPage from '../pages/admin/DashboardPage.vue';
 import MenuManagementPage from '../pages/admin/MenuManagementPage.vue';
 import PromoManagementPage from '../pages/admin/PromoManagementPage.vue';
 
+import StartPage from '../pages/user/StartPage.vue';
 import HomePage from '../pages/user/HomePage.vue';
 import MenuListPage from '../pages/user/MenuListPage.vue';
 import OrderPage from '../pages/user/OrderPage.vue';
@@ -13,6 +14,10 @@ import LoginPage from '../pages/auth/LoginPage.vue';
 import RegisterPage from '../pages/auth/RegisterPage.vue';
 
 var routes = [
+  {
+    path: '/',
+    component: StartPage,
+  },
   {
     path: '/user/home/',
     component: HomePage,

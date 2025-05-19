@@ -32,12 +32,8 @@
           Sudah punya akun?
           <f7-link href="/login/" class="login-link">Masuk di sini</f7-link>
         </p>
-
-        <f7-link href="/user/home/" class="back-link">Kembali ke Beranda</f7-link>
       </div>
     </form>
-
-    <p v-if="error" class="error-message">{{ error }}</p>
   </f7-page>
 </template>
 
@@ -64,7 +60,8 @@ export default {
         return;
       }
 
-      try {r
+      try {
+        r
         const response = await fetch('http://localhost:5000/api/auth/register', {
           method: 'POST',
           headers: {
@@ -198,12 +195,5 @@ export default {
   color: #331c2c;
   font-weight: bold;
   margin-left: 4px;
-}
-
-.back-link {
-  margin-top: 12px;
-  font-size: 14px;
-  color: #331c2c;
-  text-decoration: underline;
 }
 </style>
