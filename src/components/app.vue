@@ -1,19 +1,20 @@
 <template>
   <f7-app v-bind="f7params">
-    <f7-view main class="safe-areas" url="/" :browser-history="true" :animate="false">
-      <f7-navbar v-if="showHeader">
+    <f7-view main class="safe-areas" url="/" :browser-history="true" :router="true">
+      <f7-navbar v-if="showNavbar" class="navbar-custom">
         <f7-nav-title class="brand-title">
           <div class="brand-logo">Ngopilosofi</div>
           <div class="brand-subtitle">Philosophy in Every Sip</div>
         </f7-nav-title>
         <f7-nav-right>
-          <f7-link id="cart-icon" href="/user/order/" icon-f7="cart" class="cart-link">
-            <f7-badge class="cart-badge" v-if="cartCount > 0" color="red">{{ cartCount }}</f7-badge>
+          <f7-link v-if="isAuthenticated" href="/user/order/" icon-f7="cart" class="cart-link">
+            <f7-badge v-if="cartCount > 0" color="red">{{ cartCount }}</f7-badge>
           </f7-link>
+          <f7-link v-if="!isAuthenticated" href="/login/" text="Login" />
         </f7-nav-right>
       </f7-navbar>
 
-      <f7-toolbar v-if="showHeader" tabbar labels bottom class="toolbar-custom">
+      <f7-toolbar v-if="showToolbar && isAuthenticated" tabbar labels bottom class="toolbar-custom">
         <f7-link href="/user/home/" icon-f7="house" text="Home" />
         <f7-link href="/user/favorite/" icon-f7="heart" text="Favorit" />
         <f7-link href="/user/menu-list/" icon-f7="square_grid_2x2" text="Menu" />
@@ -25,73 +26,78 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { f7, f7ready } from 'framework7-vue';
 import { getDevice } from 'framework7/lite-bundle';
-import store from '../js/store';
 import routes from '../js/routes';
 
 export default {
   setup() {
     const device = getDevice();
     const cartCount = ref(0);
-    const currentPath = ref(window.location.pathname);
-    let storageListener = null;
-    let cartUpdateListener = null;
-    const hideHeaderRoutes = ['/login/', '/register/'];
-    const normalizePath = (path) => {
-      return path.endsWith('/') ? path : path + '/';
-    };
-    const showHeader = computed(() => {
-      const normalizedPath = normalizePath(currentPath.value);
-      return !hideHeaderRoutes.includes(normalizedPath);
+    const currentPath = ref('/');
+    const isAuthenticated = ref(false);
+    
+    const hideNavbarRoutes = ['/login/', '/register/'];
+    const hideToolbarRoutes = ['/login/', '/register/', '/user/profile/'];
+    
+    const showNavbar = computed(() => {
+      return !hideNavbarRoutes.includes(currentPath.value);
     });
+    
+    const showToolbar = computed(() => {
+      return isAuthenticated.value && !hideToolbarRoutes.includes(currentPath.value);
+    });
+    
     const updateCartCount = () => {
       try {
-        const cart = JSON.parse(localStorage.getItem('/user/cart/') || '[]');
-        cartCount.value = cart.length;
+        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+
+        cartCount.value = cart.reduce((total, item) => total + item.quantity, 0);
       } catch (e) {
         console.error('Error reading cart:', e);
         cartCount.value = 0;
       }
     };
-
+    
+    const checkAuth = () => {
+      const token = localStorage.getItem('token');
+      isAuthenticated.value = !!token;
+    };
+    
+    const handleRouteChange = (route) => {
+      currentPath.value = route.url;
+      checkAuth();
+    };
+    
     const handleStorageEvent = (event) => {
-      if (event.key === '/user/cart/') {
+      if (event.key === 'cart') {
         updateCartCount();
+      } else if (event.key === 'token') {
+        checkAuth();
       }
     };
-
+    
     onMounted(() => {
       f7ready(() => {
-        if (device.cordova) cordovaApp.init(f7);
-
         currentPath.value = f7.views.main.router.url;
-
-        f7.on('routeChange', (newRoute) => {
-          currentPath.value = newRoute.url;
-          console.log('Route changed to:', newRoute.url); 
-        });
-
+        f7.on('routeChange', handleRouteChange);
         updateCartCount();
+        checkAuth();
         window.addEventListener('storage', handleStorageEvent);
-        cartUpdateListener = f7.on('cartUpdated', updateCartCount);
       });
     });
-
+    
     onUnmounted(() => {
       window.removeEventListener('storage', handleStorageEvent);
-      if (cartUpdateListener) cartUpdateListener.off();
+      f7.off('routeChange', handleRouteChange);
     });
-
+    
     const f7params = {
       name: 'Ngopilosofi',
       theme: 'auto',
-      store,
       routes,
-      serviceWorker: process.env.NODE_ENV === 'production' ? {
-        path: '/service-worker.js',
-      } : {},
+      id: 'com.ngopilosofi.app',
       input: {
         scrollIntoViewOnFocus: device.cordova,
         scrollIntoViewCentered: device.cordova,
@@ -103,20 +109,45 @@ export default {
       colors: {
         primary: '#331c2c',
       },
+      view: {
+        browserHistory: true,
+      },
+      router: {
+        beforeEnter: async (routeTo, routeFrom, resolve, reject) => {
+          const protectedRoutes = ['/user/home/', '/user/favorite/', '/user/menu-list/', '/user/order/', '/user/profile/'];
+          const authRequired = protectedRoutes.includes(routeTo.url);
+          const token = localStorage.getItem('token');
+          
+          if (authRequired && !token) {
+            resolve({ url: '/login/' });
+            return;
+          }
+          
+          if (['/login/', '/register/'].includes(routeTo.url) && token) {
+            resolve({ url: '/user/home/' });
+            return;
+          }
+          
+          resolve();
+        }
+      }
     };
 
     return {
       f7params,
       cartCount,
-      showHeader, 
+      showNavbar,
+      showToolbar,
+      isAuthenticated
     };
   },
 };
 </script>
 
 <style scoped>
-::v-deep(.navbar-inner) {
-  background-color: white !important;
+.navbar-custom {
+  background-color: white;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .brand-title {
@@ -153,13 +184,13 @@ export default {
   margin-top: 4px;
 }
 
-.cart-badge {
-  left: -10px;
-  bottom: 10px;
+.cart-link {
+  position: relative;
 }
 
-.no-header .navbar,
-.no-header .toolbar {
-  display: none !important;
+.cart-link .badge {
+  position: absolute;
+  left: -5px;
+  bottom: 10px;
 }
 </style>

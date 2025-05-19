@@ -24,12 +24,7 @@
     <f7-block>
       <h2 class="section-title">Kategori Populer</h2>
       <div class="kategori-grid">
-        <div
-          v-for="kategori in kategoriPopuler"
-          :key="kategori"
-          class="kategori-card"
-          @click="goToKategori(kategori)"
-        >
+        <div v-for="kategori in kategoriPopuler" :key="kategori" class="kategori-card" @click="goToKategori(kategori)">
           <f7-icon ios="f7:star_fill" md="material:star" color="#331c2c" size="large" />
           <div class="kategori-name">{{ kategori }}</div>
         </div>
@@ -39,12 +34,7 @@
     <f7-block>
       <h2 class="section-title">Menu Terbaru</h2>
       <div class="menu-favorite-grid">
-        <div
-          v-for="item in terbaruItems"
-          :key="item.id"
-          class="menu-favorite-card"
-          @click="openDetail(item)"
-        >
+        <div v-for="item in terbaruItems" :key="item.id" class="menu-favorite-card" @click="openDetail(item)">
           <img :src="formatImagePath(item.gambar)" alt="Menu Image" />
           <div class="menu-fav-name">{{ item.nama }}</div>
           <div class="menu-fav-price">{{ formatRupiah(item.harga) }}</div>
@@ -102,11 +92,17 @@ export default {
     },
   },
   mounted() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      this.$f7router.navigate('/login/');
+      return;
+    }
+
     const storedMenu = JSON.parse(localStorage.getItem('/menu/all/') || '[]');
     this.semuaMenu = storedMenu;
 
-    const point = parseInt(localStorage.getItem('user_point') || '0');
-    this.userPoint = point;
+    const user = JSON.parse(localStorage.getItem('user'));
+    this.userPoint = user && user.point ? user.point : 0;
   },
 };
 </script>

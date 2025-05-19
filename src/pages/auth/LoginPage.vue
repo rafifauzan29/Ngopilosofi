@@ -6,48 +6,86 @@
       <p class="login-subtitle">Masuk ke dunia ngopi penuh filosofi</p>
     </div>
 
-    <form class="login-form">
+    <form class="login-form" @submit.prevent="handleLogin">
       <div class="form-group">
         <label for="email" class="form-label">Email</label>
-        <input
-          id="email"
-          type="email"
-          placeholder="email@anda.com"
-          class="form-input"
-          required
-        />
+        <input id="email" type="email" v-model="email" placeholder="email@anda.com" class="form-input" required />
       </div>
       <div class="form-group">
         <label for="password" class="form-label">Password</label>
-        <input
-          id="password"
-          type="password"
-          placeholder="Masukkan password"
-          class="form-input"
-          required
-        />
+        <input id="password" type="password" v-model="password" placeholder="Masukkan password" class="form-input"
+          required />
+      </div>
+      <div class="login-actions">
+        <button type="submit" class="button button-fill login-button">
+          Login
+        </button>
+
+        <p class="register-text">
+          Belum punya akun?
+          <f7-link href="/register/" class="register-link">Daftar Sekarang</f7-link>
+        </p>
+
+        <f7-link href="/user/home/" class="back-link">Kembali ke Beranda</f7-link>
       </div>
     </form>
 
-    <div class="login-actions">
-      <f7-link href="/home/" class="button button-fill login-button">
-        Login
-      </f7-link>
-
-      <p class="register-text">
-        Belum punya akun?
-        <f7-link href="/register/" class="register-link">Daftar Sekarang</f7-link>
-      </p>
-
-      <f7-link href="/user/home/" class="back-link">Kembali ke Beranda</f7-link>
-    </div>
+    <p v-if="error" class="error-message">{{ error }}</p>
   </f7-page>
 </template>
 
 <script>
+import { f7 } from 'framework7-vue';
+
 export default {
   name: 'LoginPage',
+  data() {
+    return {
+      email: '',
+      password: '',
+      error: ''
+    };
+  },
+  methods: {
+    async handleLogin() {
+      this.error = '';
+
+      try {
+        const response = await fetch('http://localhost:5000/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: this.email,
+            password: this.password
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          this.error = data.message || 'Login gagal';
+          return;
+        }
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+
+        f7.views.main.router.navigate('/user/home/');
+
+      } catch (err) {
+        this.error = 'Terjadi kesalahan saat login.';
+        console.error(err);
+      }
+    }
+  },
+  mounted() {
+    const token = localStorage.getItem('token');
+    if (token) {
+      f7.views.main.router.navigate('/user/home/');
+    }
+  }
 };
+
 </script>
 
 <style scoped>
@@ -145,5 +183,11 @@ export default {
   font-size: 14px;
   color: #331c2c;
   text-decoration: underline;
+}
+
+.error-message {
+  color: red;
+  margin-top: 12px;
+  text-align: center;
 }
 </style>

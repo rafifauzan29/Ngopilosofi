@@ -7,9 +7,9 @@
     </div>
 
     <div class="profile-content">
-      <f7-link href="/login/" class="button button-fill main-button login">
-        Login
-      </f7-link>
+      <f7-button class="button button-fill main-button login" @click="logout">
+        Logout
+      </f7-button>
       <f7-button class="main-button secondary" @click="openPopup('cs')">
         Customer Service
       </f7-button>
@@ -56,6 +56,8 @@
 </template>
 
 <script>
+import { f7, f7ready } from 'framework7-vue';
+
 export default {
   name: 'ProfilePage',
   data() {
@@ -82,6 +84,19 @@ export default {
     openPopup(content) {
       this.popupContent = content;
       this.popupOpen = true;
+    },
+    logout() {
+      f7ready(() => {
+        localStorage.removeItem('userToken');
+        localStorage.removeItem('userData');
+
+        f7.dialog.alert('Anda telah logout.', () => {
+          f7.views.main.router.navigate('/login/', {
+            reloadCurrent: true,
+            clearPreviousHistory: true
+          });
+        });
+      });
     },
   },
 };

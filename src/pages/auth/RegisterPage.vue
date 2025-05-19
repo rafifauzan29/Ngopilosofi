@@ -6,67 +6,100 @@
       <p class="register-subtitle">Bergabung bersama Ngopilosofi</p>
     </div>
 
-    <form class="register-form">
+    <form class="register-form" @submit.prevent="registerUser">
       <div class="form-group">
         <label for="name" class="form-label">Nama Lengkap</label>
-        <input
-          id="name"
-          type="text"
-          placeholder="Nama lengkap Anda"
-          class="form-input"
-          required
-        />
+        <input id="name" type="text" v-model="name" placeholder="Nama lengkap Anda" class="form-input" required />
       </div>
       <div class="form-group">
         <label for="email" class="form-label">Email</label>
-        <input
-          id="email"
-          type="email"
-          placeholder="email@anda.com"
-          class="form-input"
-          required
-        />
+        <input id="email" type="email" v-model="email" placeholder="email@anda.com" class="form-input" required />
       </div>
       <div class="form-group">
         <label for="password" class="form-label">Password</label>
-        <input
-          id="password"
-          type="password"
-          placeholder="Masukkan password"
-          class="form-input"
-          required
-        />
+        <input id="password" type="password" v-model="password" placeholder="Masukkan password" class="form-input"
+          required />
       </div>
       <div class="form-group">
         <label for="confirm-password" class="form-label">Konfirmasi Password</label>
-        <input
-          id="confirm-password"
-          type="password"
-          placeholder="Ulangi password"
-          class="form-input"
-          required
-        />
+        <input id="confirm-password" type="password" v-model="confirmPassword" placeholder="Ulangi password"
+          class="form-input" required />
+      </div>
+      <div class="register-actions">
+        <button type="submit" class="register-button">Daftar</button>
+
+        <p class="login-text">
+          Sudah punya akun?
+          <f7-link href="/login/" class="login-link">Masuk di sini</f7-link>
+        </p>
+
+        <f7-link href="/user/home/" class="back-link">Kembali ke Beranda</f7-link>
       </div>
     </form>
 
-    <div class="register-actions">
-      <f7-link href="/home/" class="button button-fill register-button">
-        Daftar
-      </f7-link>
-
-      <p class="login-text">
-        Sudah punya akun?
-        <f7-link href="/login/" class="login-link">Masuk di sini</f7-link>
-      </p>
-
-      <f7-link href="/user/home/" class="back-link">Kembali ke Beranda</f7-link>
-    </div>
+    <p v-if="error" class="error-message">{{ error }}</p>
   </f7-page>
 </template>
 
 <script>
+import { f7 } from 'framework7-vue';
+
 export default {
   name: 'RegisterPage',
+  data() {
+    return {
+      name: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      error: ''
+    };
+  },
+  methods: {
+    async registerUser() {
+      this.error = '';
+
+      // Validasi: Password dan konfirmasi harus sama
+      if (this.password !== this.confirmPassword) {
+        this.error = 'Password tidak cocok';
+        return;
+      }
+
+      try {
+        const response = await fetch('http://localhost:5000/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: this.name,
+            email: this.email,
+            password: this.password,
+            confirmPassword: this.confirmPassword
+          })
+        });
+
+        let data;
+        try {
+          data = await response.json();
+        } catch (parseErr) {
+          const text = await response.text();
+          data = { message: text };
+        }
+
+        if (!response.ok) {
+          this.error = data.message || 'Registrasi gagal';
+          return;
+        }
+
+        f7.views.main.router.navigate('/login/');
+
+      } catch (err) {
+        this.error = 'Terjadi kesalahan saat registrasi.';
+        console.error('Error:', err);
+      }
+    }
+  }
 };
 </script>
 
@@ -145,6 +178,8 @@ export default {
   font-size: 16px;
   border-radius: 12px;
   padding: 12px;
+  border: none;
+  cursor: pointer;
 }
 
 .login-text {
@@ -165,5 +200,11 @@ export default {
   font-size: 14px;
   color: #331c2c;
   text-decoration: underline;
+}
+
+.error-message {
+  color: red;
+  margin-top: 12px;
+  text-align: center;
 }
 </style>

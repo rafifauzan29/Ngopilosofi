@@ -8,9 +8,9 @@ const PUBLIC_DIR = path.resolve(__dirname, './public');
 const BUILD_DIR = path.resolve(__dirname, './www',);
 export default async () => {
 
-  return  {
+  return {
     plugins: [
-      vue({ template: { compilerOptions: { isCustomElement: (tag) => tag.includes('swiper-') } } }),,
+      vue({ template: { compilerOptions: { isCustomElement: (tag) => tag.includes('swiper-') } } }), ,
 
     ],
     root: SRC_DIR,
@@ -31,7 +31,13 @@ export default async () => {
     },
     server: {
       host: true,
+      proxy: {
+        '/api': {
+          target: 'http://localhost:5000',
+          changeOrigin: true,
+          secure: false,
+        },
+      },
     },
-
   };
 }

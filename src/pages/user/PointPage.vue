@@ -10,17 +10,9 @@
 
     <f7-block-title>Riwayat Poin</f7-block-title>
     <f7-list class="history-list">
-      <f7-list-item
-        v-for="(item, index) in pointHistory"
-        :key="index"
-        :title="item.keterangan"
-        :after="item.jumlah + ' pts'"
-        :footer="formatTanggal(item.tanggal)"
-      />
-      <f7-list-item
-        v-if="pointHistory.length === 0"
-        title="Belum ada riwayat poin"
-      />
+      <f7-list-item v-for="(item, index) in pointHistory" :key="index" :title="item.keterangan"
+        :after="item.jumlah + ' pts'" :footer="formatTanggal(item.tanggal)" />
+      <f7-list-item v-if="pointHistory.length === 0" title="Belum ada riwayat poin" />
     </f7-list>
   </f7-page>
 </template>
