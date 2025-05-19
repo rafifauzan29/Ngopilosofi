@@ -2,6 +2,10 @@
   <f7-page class="page-bg">
     <f7-navbar title="Ngopilosofi" class="navbar-custom" />
 
+    <f7-block class="greeting-block">
+      <h2 class="greeting-text">Hi, {{ firstName }} 👋</h2>
+    </f7-block>
+
     <f7-block class="banner-block">
       <div class="banner-text">
         <h1>Selamat Datang di Ngopilosofi ☕</h1>
@@ -24,7 +28,12 @@
     <f7-block>
       <h2 class="section-title">Kategori Populer</h2>
       <div class="kategori-grid">
-        <div v-for="kategori in kategoriPopuler" :key="kategori" class="kategori-card" @click="goToKategori(kategori)">
+        <div
+          v-for="kategori in kategoriPopuler"
+          :key="kategori"
+          class="kategori-card"
+          @click="goToKategori(kategori)"
+        >
           <f7-icon ios="f7:star_fill" md="material:star" color="#331c2c" size="large" />
           <div class="kategori-name">{{ kategori }}</div>
         </div>
@@ -34,7 +43,12 @@
     <f7-block>
       <h2 class="section-title">Menu Terbaru</h2>
       <div class="menu-favorite-grid">
-        <div v-for="item in terbaruItems" :key="item.id" class="menu-favorite-card" @click="openDetail(item)">
+        <div
+          v-for="item in terbaruItems"
+          :key="item.id"
+          class="menu-favorite-card"
+          @click="openDetail(item)"
+        >
           <img :src="formatImagePath(item.gambar)" alt="Menu Image" />
           <div class="menu-fav-name">{{ item.nama }}</div>
           <div class="menu-fav-price">{{ formatRupiah(item.harga) }}</div>
@@ -55,6 +69,7 @@ export default {
       kategoriPopuler: ['Kopi', 'Susu', 'Makanan', 'Snack', 'Minuman'],
       semuaMenu: [],
       userPoint: 0,
+      firstName: '', 
     };
   },
   computed: {
@@ -103,6 +118,10 @@ export default {
 
     const user = JSON.parse(localStorage.getItem('user'));
     this.userPoint = user && user.point ? user.point : 0;
+
+    if (user && user.name) {
+      this.firstName = user.name.split(' ')[0];
+    }
   },
 };
 </script>
@@ -112,12 +131,22 @@ export default {
   background-color: #ede0d1;
 }
 
+.greeting-block {
+  margin: 20px 20px 10px;
+}
+
+.greeting-text {
+  font-size: 20px;
+  font-weight: 600;
+  color: #331c2c;
+}
+
 .banner-block {
   background: #331c2c;
   color: white;
   text-align: center;
   padding: 30px 20px;
-  border-radius: 0 0 20px 20px;
+  border-radius: 20px 20px 20px 20px;
 }
 
 .banner-text h1 {

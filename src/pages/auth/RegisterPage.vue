@@ -59,13 +59,12 @@ export default {
     async registerUser() {
       this.error = '';
 
-      // Validasi: Password dan konfirmasi harus sama
       if (this.password !== this.confirmPassword) {
-        this.error = 'Password tidak cocok';
+        f7.dialog.alert('Password dan konfirmasi password tidak cocok.', 'Error');
         return;
       }
 
-      try {
+      try {r
         const response = await fetch('http://localhost:5000/api/auth/register', {
           method: 'POST',
           headers: {
@@ -88,14 +87,20 @@ export default {
         }
 
         if (!response.ok) {
-          this.error = data.message || 'Registrasi gagal';
+          if (data.message && data.message.includes('email')) {
+            f7.dialog.alert('Email sudah terdaftar. Silakan coba dengan email lain.', 'Error');
+          } else {
+            f7.dialog.alert(data.message || 'Registrasi gagal. Coba lagi.', 'Error');
+          }
           return;
         }
 
-        f7.views.main.router.navigate('/login/');
+        f7.dialog.alert('Registrasi berhasil! Silakan login.', 'Sukses', () => {
+          f7.views.main.router.navigate('/login/');
+        });
 
       } catch (err) {
-        this.error = 'Terjadi kesalahan saat registrasi.';
+        f7.dialog.alert('Terjadi kesalahan saat registrasi. Silakan coba lagi nanti.', 'Error');
         console.error('Error:', err);
       }
     }
@@ -200,11 +205,5 @@ export default {
   font-size: 14px;
   color: #331c2c;
   text-decoration: underline;
-}
-
-.error-message {
-  color: red;
-  margin-top: 12px;
-  text-align: center;
 }
 </style>

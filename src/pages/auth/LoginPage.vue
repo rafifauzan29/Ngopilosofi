@@ -63,14 +63,20 @@ export default {
         const data = await response.json();
 
         if (!response.ok) {
-          this.error = data.message || 'Login gagal';
+          if (response.status === 401) {
+            f7.dialog.alert('Email atau kata sandi salah.', 'Login Gagal');
+          } else {
+            f7.dialog.alert(data.message || 'Login gagal.', 'Login Gagal');
+          }
           return;
         }
 
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
 
-        f7.views.main.router.navigate('/user/home/');
+        f7.dialog.alert('Login berhasil! Selamat datang.', 'Sukses', () => {
+          f7.views.main.router.navigate('/user/home/');
+        });
 
       } catch (err) {
         this.error = 'Terjadi kesalahan saat login.';
@@ -183,11 +189,5 @@ export default {
   font-size: 14px;
   color: #331c2c;
   text-decoration: underline;
-}
-
-.error-message {
-  color: red;
-  margin-top: 12px;
-  text-align: center;
 }
 </style>

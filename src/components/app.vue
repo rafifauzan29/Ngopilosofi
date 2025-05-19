@@ -39,7 +39,7 @@ export default {
     const isAuthenticated = ref(false);
     
     const hideNavbarRoutes = ['/login/', '/register/'];
-    const hideToolbarRoutes = ['/login/', '/register/', '/user/profile/'];
+    const hideToolbarRoutes = ['/login/', '/register/'];
     
     const showNavbar = computed(() => {
       return !hideNavbarRoutes.includes(currentPath.value);
