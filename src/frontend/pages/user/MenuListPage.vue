@@ -285,6 +285,10 @@ export default {
 
       this.showToast('Produk ditambahkan ke keranjang');
       this.popupOpened = false;
+
+      setTimeout(() => {
+        location.reload();
+      }, 1500);
     },
     showToast(message) {
       f7.toast

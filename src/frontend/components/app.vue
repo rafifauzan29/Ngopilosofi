@@ -7,10 +7,9 @@
           <div class="brand-subtitle">Philosophy in Every Sip</div>
         </f7-nav-title>
         <f7-nav-right>
-          <f7-link v-if="isAuthenticated" href="/user/order/" icon-f7="cart" class="cart-link">
-            <f7-badge v-if="cartCount > 0" color="red">{{ cartCount }}</f7-badge>
+          <f7-link id="cart-icon" href="/user/order/" icon-f7="cart" class="cart-link">
+            <f7-badge class="cart-badge" v-if="cartCount > 0" color="red">{{ cartCount }}</f7-badge>
           </f7-link>
-          <f7-link v-if="!isAuthenticated" href="/login/" text="Login" />
         </f7-nav-right>
       </f7-navbar>
 
@@ -51,9 +50,8 @@ export default {
     
     const updateCartCount = () => {
       try {
-        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-
-        cartCount.value = cart.reduce((total, item) => total + item.quantity, 0);
+        const cart = JSON.parse(localStorage.getItem('/user/cart/') || '[]');
+        cartCount.value = cart.length;
       } catch (e) {
         console.error('Error reading cart:', e);
         cartCount.value = 0;
@@ -188,8 +186,8 @@ export default {
 }
 
 .cart-link .badge {
-  position: absolute;
-  left: -5px;
+  left: -10px;
   bottom: 10px;
 }
+
 </style>

@@ -3,7 +3,10 @@
   "private": true,
   "version": "1.0.0",
   "description": "Ngopilosofi",
-  "repository": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rafifauzan29/ngopilosofi.git"
+  },
   "license": "UNLICENSED",
   "scripts": {
     "start": "npm run dev",
@@ -32,6 +35,7 @@
     "framework7-icons": "^5.0.5",
     "framework7-vue": "^8.3.4",
     "material-icons": "^1.13.14",
+    "mitt": "^3.0.1",
     "skeleton-elements": "^4.0.1",
     "swiper": "^11.2.6",
     "vue": "^3.5.13"
@@ -45,5 +49,13 @@
     "cross-env": "^7.0.3",
     "postcss-preset-env": "^10.1.6",
     "vite": "^6.3.3"
-  }
+  },
+  "main": "postcss.config.js",
+  "keywords": [],
+  "author": "",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/rafifauzan29/ngopilosofi/issues"
+  },
+  "homepage": "https://github.com/rafifauzan29/ngopilosofi#readme"
 }

@@ -197,6 +197,10 @@ export default {
           this.cartItems = newCartItems;
           this.saveCart();
           this.showToast('Item dihapus dari keranjang');
+
+          setTimeout(() => {
+            location.reload();
+          }, 1500);
         }
       );
     },

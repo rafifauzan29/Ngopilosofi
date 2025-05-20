@@ -8,7 +8,7 @@
 
     <div class="user-profile-section">
       <div class="avatar-container" @click="openProfileEdit">
-        <img :src="userProfile.avatar || 'https://via.placeholder.com/150'" alt="Profile Picture" class="avatar" />
+        <img :src="userProfile.avatar || '../avatar.webp'" alt="Profile Picture" class="avatar" />
         <div class="edit-overlay">
           <f7-icon f7="camera_fill" size="24px" color="white"></f7-icon>
         </div>
