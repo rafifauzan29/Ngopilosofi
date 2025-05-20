@@ -162,6 +162,7 @@ export default {
 .btn-order {
   color: #ffffff;
   font-weight: 600;
+  background-color: #81036e;
 }
 
 .point-block {

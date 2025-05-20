@@ -61,7 +61,6 @@ export default {
       }
 
       try {
-        r
         const response = await fetch('http://localhost:5000/api/auth/register', {
           method: 'POST',
           headers: {
