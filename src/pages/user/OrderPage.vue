@@ -541,7 +541,7 @@ export default {
 .checkout-btn {
   --f7-button-bg-color: #331c2c;
   --f7-button-text-color: white;
-  --f7-button-height: 56px;
+  --f7-button-height: 40px;
   --f7-button-font-size: 16px;
   font-weight: 600;
   box-shadow: 0 4px 12px rgba(49, 48, 56, 0.3);
