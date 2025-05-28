@@ -1,12 +1,13 @@
 <template>
   <f7-page class="page-bg">
+    <f7-navbar title="Favorit Saya" back-link="Back" class="navbar-custom"></f7-navbar>
     <f7-block>
-      <f7-block v-if="favoriteItems.length > 0" class="favorites-title">My Favorites</f7-block>
+      <f7-block v-if="favoriteItems.length > 0" class="favorites-title">Daftar Favorit</f7-block>
 
       <div v-if="favoriteItems.length > 0">
         <div class="menu-grid">
           <div v-for="(item, index) in favoriteItems" :key="index" class="menu-card">
-            <div class="favorite-icon" @click="removeFavorite(item)">
+            <div class="favorite-icon" @click="toggleFavorite(item)">
               <f7-icon ios="f7:heart_fill" aurora="f7:heart_fill" md="material:favorite" color="red"></f7-icon>
             </div>
             <img :src="item.gambar" class="menu-image" />
@@ -14,7 +15,7 @@
               <div class="menu-name">{{ item.nama }}</div>
               <div class="menu-price">{{ formatRupiah(item.harga) }}</div>
             </div>
-            <f7-button small fill class="add-button" @click="openPopup(item)">
+            <f7-button small fill class="add-button" @click="openDetail(item)">
               Tambah
             </f7-button>
           </div>
@@ -23,9 +24,9 @@
 
       <div v-else class="empty-state">
         <f7-icon ios="f7:heart" aurora="f7:heart" md="material:favorite_border" size="48px" color="#331c2c"></f7-icon>
-        <div class="empty-text">No favorites yet</div>
+        <div class="empty-text">Belum ada menu favorit</div>
         <f7-button href="/user/menu-list/" class="browse-button">
-          Browse Menu
+          Lihat Menu
         </f7-button>
       </div>
     </f7-block>
@@ -81,6 +82,8 @@ export default {
       selectedItem: null,
       selectedAddons: [],
       quantity: 1,
+      userId: localStorage.getItem('userId') || null,
+      pendingFavorites: JSON.parse(localStorage.getItem('pendingFavorites') || '[]')
     };
   },
   methods: {
@@ -91,31 +94,121 @@ export default {
         minimumFractionDigits: 0,
       }).format(angka);
     },
-    tambahPesanan(item) {
-      this.$f7.dialog.alert(`Tambahkan: ${item.nama}`);
-    },
-    removeFavorite(item) {
-      const index = this.favoriteItems.findIndex(
-        (fav) => fav.nama === item.nama
-      );
-      if (index !== -1) {
-        this.favoriteItems.splice(index, 1);
+    async fetchFavoriteItems() {
+      if (!this.userId) {
+        f7.toast.create({
+          text: 'Silakan login terlebih dahulu',
+          closeTimeout: 3000,
+          cssClass: 'error-toast',
+        }).open();
+        return;
       }
 
-      localStorage.setItem(
-        '/user/favorite/',
-        JSON.stringify(this.favoriteItems)
-      );
+      try {
+        const response = await fetch('http://localhost:5000/api/favorite', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (!response.ok) throw new Error('Failed to fetch favorites');
+        
+        this.favoriteItems = await response.json();
 
-      this.$f7.toast
-        .create({
-          text: 'Removed from favorites',
-          closeTimeout: 2000,
-          destroyOnClose: true,
-        })
-        .open();
+        localStorage.setItem(`userFavorites_${this.userId}`, JSON.stringify(this.favoriteItems));
+        
+      } catch (error) {
+        console.error('Error fetching favorites:', error);
+
+        const cachedFavorites = localStorage.getItem(`userFavorites_${this.userId}`);
+        if (cachedFavorites) {
+          this.favoriteItems = JSON.parse(cachedFavorites);
+          f7.toast.create({
+            text: 'Menggunakan data offline',
+            closeTimeout: 3000,
+            cssClass: 'warning-toast',
+          }).open();
+        }
+      }
     },
-    openPopup(item) {
+    async toggleFavorite(item) {
+      if (!this.userId) {
+        f7.toast.create({
+          text: 'Silakan login terlebih dahulu',
+          closeTimeout: 3000,
+          cssClass: 'error-toast',
+        }).open();
+        return;
+      }
+
+      if (!navigator.onLine) {
+        this.pendingFavorites.push({
+          menuId: item._id,
+          action: 'remove',
+          timestamp: new Date().getTime()
+        });
+        localStorage.setItem('pendingFavorites', JSON.stringify(this.pendingFavorites));
+      
+        this.favoriteItems = this.favoriteItems.filter(i => i._id !== item._id);
+        
+        f7.toast.create({
+          text: 'Akan disinkronisasi ketika online',
+          closeTimeout: 3000,
+          cssClass: 'warning-toast',
+        }).open();
+        return;
+      }
+
+      try {
+        const response = await fetch(`http://localhost:5000/api/favorite/${item._id}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) throw new Error('Failed to remove favorite');
+
+        this.favoriteItems = this.favoriteItems.filter(i => i._id !== item._id);
+        
+        f7.toast.create({
+          text: 'Dihapus dari favorit',
+          closeTimeout: 3000,
+          cssClass: 'success-toast',
+        }).open();
+
+        if (this.pendingFavorites.length > 0) {
+          await this.syncPendingFavorites();
+        }
+      } catch (error) {
+        console.error('Error removing favorite:', error);
+        f7.toast.create({
+          text: 'Gagal menghapus favorit',
+          closeTimeout: 3000,
+          cssClass: 'error-toast',
+        }).open();
+      }
+    },
+    async syncPendingFavorites() {
+      try {
+        for (const pending of this.pendingFavorites) {
+          await fetch(`http://localhost:5000/api/favorite/${pending.menuId}`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+        }
+
+        this.pendingFavorites = [];
+        localStorage.removeItem('pendingFavorites');
+
+        await this.fetchFavoriteItems();
+      } catch (error) {
+        console.error('Error syncing pending favorites:', error);
+      }
+    },
+    openDetail(item) {
       this.selectedItem = item;
       this.selectedAddons = [];
       this.quantity = 1;
@@ -138,11 +231,8 @@ export default {
         this.selectedAddons.splice(index, 1);
       }
     },
-    async addToCart() {
-      const totalAddonPrice = this.selectedAddons.reduce(
-        (sum, addon) => sum + addon.harga,
-        0
-      );
+    addToCart() {
+      const totalAddonPrice = this.selectedAddons.reduce((sum, addon) => sum + addon.harga, 0);
       const totalHarga = (this.selectedItem.harga + totalAddonPrice) * this.quantity;
 
       const cartItem = {
@@ -164,7 +254,7 @@ export default {
 
       const existingIndex = existingCart.findIndex(
         item =>
-          item.produk.id === cartItem.produk.id &&
+          item.produk._id === cartItem.produk._id &&
           isSameAddons(item.tambahan, cartItem.tambahan)
       );
 
@@ -194,15 +284,15 @@ export default {
           cssClass: 'success-toast',
         })
         .open();
-    },
-    loadFavorite() {
-      const savedFavorite = localStorage.getItem('/user/favorite/');
-      this.favoriteItems = savedFavorite ? JSON.parse(savedFavorite) : [];
-    },
+    }
   },
-  mounted() {
-    this.loadFavorite();
+  async mounted() {
+    await this.fetchFavoriteItems();
+    window.addEventListener('online', this.syncPendingFavorites);
   },
+  beforeDestroy() {
+    window.removeEventListener('online', this.syncPendingFavorites);
+  }
 };
 </script>
 

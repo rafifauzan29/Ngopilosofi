@@ -69,6 +69,7 @@ export default {
 
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('userId', data.user._id);
 
         f7.dialog.alert('Login berhasil! Selamat datang.', 'Sukses', () => {
           f7.views.main.router.navigate('/user/home/');

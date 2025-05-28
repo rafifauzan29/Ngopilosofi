@@ -81,7 +81,7 @@
           <div class="avatar-upload">
             <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*" style="display: none;" />
             <div class="avatar-preview" @click="$refs.fileInput.click()">
-              <img :src="editProfile.avatar || 'https://via.placeholder.com/150'" alt="Profile Preview" />
+              <img :src="editProfile.avatar" alt="Profile Preview" />
               <div class="upload-text">
                 <f7-icon f7="camera_fill"></f7-icon>
                 <p>Ubah Foto</p>
@@ -121,7 +121,8 @@ export default {
         email: '',
         avatar: ''
       },
-      selectedFile: null
+      selectedFile: null,
+      loading: false
     };
   },
   computed: {
@@ -144,18 +145,15 @@ export default {
   methods: {
     loadUserProfile() {
       const user = JSON.parse(localStorage.getItem('user'));
-
       if (!user || !user.name || !user.email) {
         f7router.navigate('/login/');
         return;
       }
-
       this.userProfile = {
         name: user.name,
         email: user.email,
-        avatar: localStorage.getItem('userAvatar') || ''
+        avatar: user.avatar || localStorage.getItem('userAvatar') || ''
       };
-
       this.editProfile = { ...this.userProfile };
     },
     openPopup(content) {
@@ -174,35 +172,65 @@ export default {
 
       const reader = new FileReader();
       reader.onload = (e) => {
-        this.editProfile.avatar = e.target.result;
+        this.editProfile.avatar = e.target.result; 
       };
       reader.readAsDataURL(file);
     },
-    saveProfile() {
-      if (this.selectedFile) {
-        localStorage.setItem('userAvatar', this.editProfile.avatar);
-        this.userProfile.avatar = this.editProfile.avatar;
+    async saveProfile() {
+      this.loading = true;
+
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          f7.dialog.alert('Token tidak ditemukan, silakan login ulang.');
+          this.loading = false;
+          return;
+        }
+
+        const payload = {
+          name: this.editProfile.name,
+          email: this.editProfile.email,
+          avatar: this.editProfile.avatar 
+        };
+
+        const response = await fetch('http://localhost:5000/api/profile/updateProfile', {
+          method: 'PUT', 
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Gagal update profil');
+        }
+
+        const updatedUser = await response.json();
+
+        localStorage.setItem('user', JSON.stringify(updatedUser.user));
+        localStorage.setItem('userAvatar', updatedUser.user.avatar || '');
+
+        this.userProfile = { ...updatedUser.user };
+        this.editProfile = { ...updatedUser.user };
+        this.profileEditOpen = false;
+
+        f7.dialog.alert('Profil berhasil diperbarui!');
+      } catch (error) {
+        console.error('Error update profil:', error);
+        f7.dialog.alert(`Error: ${error.message}`);
+      } finally {
+        this.loading = false;
       }
-
-      this.userProfile.name = this.editProfile.name;
-
-      const currentUser = JSON.parse(localStorage.getItem('user')) || {};
-      currentUser.name = this.editProfile.name;
-      localStorage.setItem('user', JSON.stringify(currentUser));
-
-      this.profileEditOpen = false;
-
-      f7.dialog.alert('Profil berhasil diperbarui!', () => {
-        this.loadUserProfile();
-      });
     },
     logout() {
       f7.dialog.confirm(
         'Apakah Anda yakin ingin logout?',
         'Konfirmasi Logout',
         () => {
-          localStorage.removeItem('userToken');
-          localStorage.removeItem('userData');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
           localStorage.removeItem('userAvatar');
 
           f7.dialog.alert('Anda telah logout.', () => {

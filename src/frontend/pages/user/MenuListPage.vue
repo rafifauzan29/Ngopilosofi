@@ -1,5 +1,13 @@
 <template>
   <f7-page class="page-bg">
+    <f7-navbar title="Menu" class="navbar-custom">
+      <f7-nav-right>
+        <f7-link href="/user/favorites/" class="favorites-link">
+          <f7-icon ios="f7:heart" aurora="f7:heart" md="material:favorite"></f7-icon>
+        </f7-link>
+      </f7-nav-right>
+    </f7-navbar>
+
     <f7-block class="search-container">
       <f7-searchbar placeholder="Cari menu..." :clear-button="true" @input="onSearch" class="custom-searchbar" />
     </f7-block>
@@ -18,10 +26,10 @@
       <div class="menu-grid">
         <div v-for="(item, index) in filteredMenu" :key="index" class="menu-card">
           <div class="favorite-icon" @click="toggleFavorite(item)">
-            <f7-icon :ios="item.favorite ? 'f7:heart_fill' : 'f7:heart'"
-              :aurora="item.favorite ? 'f7:heart_fill' : 'f7:heart'"
-              :md="item.favorite ? 'material:favorite' : 'material:favorite_border'"
-              :color="item.favorite ? 'red' : '#331c2c'" />
+            <f7-icon :ios="item.isFavorite ? 'f7:heart_fill' : 'f7:heart'"
+              :aurora="item.isFavorite ? 'f7:heart_fill' : 'f7:heart'"
+              :md="item.isFavorite ? 'material:favorite' : 'material:favorite_border'"
+              :color="item.isFavorite ? 'red' : '#331c2c'" />
           </div>
           <img :src="item.gambar" class="menu-image" />
           <div class="menu-details">
@@ -98,84 +106,13 @@ export default {
         'Minuman',
         'Snack',
       ],
-      semuaMenu: [
-        {
-          id: 1,
-          nama: 'Kopi Susu Aren',
-          harga: 18000,
-          gambar: '/images/menu/kopisusuaren.webp',
-          kategori: 'Paling Laku',
-          favorite: false,
-          deskripsi:
-            'Perpaduan sempurna antara kopi robusta, susu segar, dan gula aren asli yang memberikan rasa manis alami dengan aroma khas kopi yang nikmat.',
-          tambahan: [
-            { nama: 'Extra Shot Espresso', harga: 5000 },
-            { nama: 'Susu Almond', harga: 7000 },
-          ],
-        },
-        {
-          id: 2,
-          nama: 'Signature Latte',
-          harga: 22000,
-          gambar: 'images/menu/signaturelatte.jpeg',
-          kategori: 'Kopi',
-          favorite: false,
-          deskripsi:
-            'Latte dengan racikan khusus menggunakan biji kopi pilihan dan susu segar yang menghasilkan tekstur creamy dengan lapisan foam yang sempurna.',
-          tambahan: [
-            { nama: 'Syrup Vanilla', harga: 4000 },
-            { nama: 'Topping Boba', harga: 6000 },
-          ],
-        },
-        {
-          id: 3,
-          nama: 'Espresso',
-          harga: 15000,
-          gambar: 'images/menu/ekspresso.jpeg',
-          kategori: 'Kopi',
-          favorite: false,
-          deskripsi:
-            'Ekstrak kopi murni yang diseduh dengan tekanan tinggi, menghasilkan minuman pekat dengan crema yang tebal dan rasa yang intens.',
-          tambahan: [{ nama: 'Extra Shot', harga: 5000 }],
-        },
-        {
-          id: 4,
-          nama: 'Susu Coklat',
-          harga: 17000,
-          gambar: 'images/menu/susucoklat.webp',
-          kategori: 'Susu',
-          favorite: false,
-          deskripsi:
-            'Minuman susu dengan coklat premium yang lembut, cocok untuk menemani saat santai maupun bekerja.',
-          tambahan: [{ nama: 'Whipped Cream', harga: 4000 }],
-        },
-        {
-          id: 5,
-          nama: 'Roti Bakar Coklat',
-          harga: 20000,
-          gambar: 'images/menu/rotibakar.jpeg',
-          kategori: 'Makanan',
-          favorite: false,
-          deskripsi:
-            'Roti gandum panggang dengan isian coklat leleh yang melimpah, disajikan hangat dengan taburan gula halus.',
-          tambahan: [{ nama: 'Keju Tambahan', harga: 5000 }],
-        },
-        {
-          id: 6,
-          nama: 'Creamy Latte',
-          harga: 23000,
-          gambar: 'images/menu/creamylatte.png',
-          kategori: ['Baru', 'Kopi'],
-          favorite: false,
-          deskripsi:
-            'Creamy Latte dengan perpaduan espresso dan susu creamy yang lembut, disajikan hangat atau dingin untuk menyegarkan harimu.',
-          tambahan: [{ nama: 'Extra Shot Espresso', harga: 5000 }],
-        },
-      ],
+      semuaMenu: [],
       popupOpened: false,
       selectedItem: null,
       selectedAddons: [],
       quantity: 1,
+      userId: localStorage.getItem('userId') || null,
+      pendingFavorites: JSON.parse(localStorage.getItem('pendingFavorites') || '[]')
     };
   },
   computed: {
@@ -189,10 +126,7 @@ export default {
         const matchKeyword = item.nama.toLowerCase().includes(this.keyword.toLowerCase());
         return matchKategori && matchKeyword;
       });
-    },
-    favoriteItems() {
-      return this.semuaMenu.filter((item) => item.favorite);
-    },
+    }
   },
   methods: {
     formatRupiah(angka) {
@@ -202,19 +136,110 @@ export default {
         minimumFractionDigits: 0,
       }).format(angka);
     },
-    tambahPesanan(item) {
-      this.$f7router.navigate('/detail-produk/', {
-        props: {
-          produk: item,
-        },
-      });
-    },
     onSearch(event) {
       this.keyword = event.target.value;
     },
-    toggleFavorite(item) {
-      item.favorite = !item.favorite;
-      localStorage.setItem('/user/favorite/', JSON.stringify(this.favoriteItems));
+    async toggleFavorite(item) {
+      if (!this.userId) {
+        f7.toast.create({
+          text: 'Silakan login terlebih dahulu',
+          closeTimeout: 3000,
+          cssClass: 'error-toast',
+        }).open();
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        f7.toast.create({
+          text: 'Token tidak ditemukan, silakan login ulang',
+          closeTimeout: 3000,
+          cssClass: 'error-toast',
+        }).open();
+        return;
+      }
+
+      this.semuaMenu = this.semuaMenu.map(menu => {
+        if (menu._id === item._id) {
+          return { ...menu, isFavorite: !menu.isFavorite };
+        }
+        return menu;
+      });
+
+      if (!navigator.onLine) {
+        this.pendingFavorites.push({
+          menuId: item._id,
+          action: item.isFavorite ? 'add' : 'remove',
+          timestamp: new Date().getTime()
+        });
+        localStorage.setItem('pendingFavorites', JSON.stringify(this.pendingFavorites));
+
+        f7.toast.create({
+          text: 'Akan disinkronisasi ketika online',
+          closeTimeout: 3000,
+          cssClass: 'warning-toast',
+        }).open();
+        return;
+      }
+
+      try {
+        item.isFavorite = !item.isFavorite;
+
+        const action = item.isFavorite ? 'add' : 'remove';
+
+        const response = await fetch(`http://localhost:5000/api/favorite/${item._id}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) throw new Error('Failed to update favorite');
+
+        const result = await response.json();
+
+        f7.toast.create({
+          text: action === 'add' ? 'Ditambahkan ke favorit' : 'Dihapus dari favorit',
+          closeTimeout: 3000,
+          cssClass: action === 'add' ? 'success-toast' : 'danger-toast',
+        }).open();
+
+        if (this.pendingFavorites.length > 0) {
+          await this.syncPendingFavorites();
+        }
+      } catch (error) {
+        console.error('Error toggling favorite:', error);
+        this.semuaMenu = this.semuaMenu.map(menu => {
+          if (menu._id === item._id) {
+            return { ...menu, isFavorite: !menu.isFavorite };
+          }
+          return menu;
+        });
+        f7.toast.create({
+          text: 'Gagal mengupdate favorit',
+          closeTimeout: 3000,
+          cssClass: 'error-toast',
+        }).open();
+      }
+    },
+
+    async syncPendingFavorites() {
+      try {
+        for (const pending of this.pendingFavorites) {
+          await fetch(`http://localhost:5000/api/favorite/${pending.menuId}`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+        }
+
+        this.pendingFavorites = [];
+        localStorage.removeItem('pendingFavorites');
+
+      } catch (error) {
+        console.error('Error syncing pending favorites:', error);
+      }
     },
     openDetail(item) {
       this.selectedItem = item;
@@ -265,7 +290,7 @@ export default {
 
       const existingIndex = existingCart.findIndex(
         item =>
-          item.produk.id === cartItem.produk.id &&
+          item.produk._id === cartItem.produk._id &&
           isSameAddons(item.tambahan, cartItem.tambahan)
       );
 
@@ -285,10 +310,6 @@ export default {
 
       this.showToast('Produk ditambahkan ke keranjang');
       this.popupOpened = false;
-
-      setTimeout(() => {
-        location.reload();
-      }, 1500);
     },
     showToast(message) {
       f7.toast
@@ -299,22 +320,80 @@ export default {
         })
         .open();
     },
-  },
-  created() {
-    const savedFavorite = localStorage.getItem('/user/favorite/');
-    if (savedFavorite) {
-      const favorite = JSON.parse(savedFavorite);
-      this.semuaMenu.forEach((item) => {
-        const isFavorite = favorite.some((fav) => fav.nama === item.nama);
-        if (isFavorite) {
-          item.favorite = true;
+    async fetchMenuItems() {
+      try {
+        const response = await fetch('http://localhost:5000/api/menu');
+        if (!response.ok) throw new Error('Failed to fetch menu items');
+
+        const data = await response.json();
+        this.semuaMenu = data;
+
+        if (this.userId) {
+          await this.checkFavoritesStatus();
         }
-      });
+
+        localStorage.setItem('/menu/all/', JSON.stringify(this.semuaMenu));
+      } catch (error) {
+        console.error('Error fetching menu items:', error);
+        const cachedMenu = localStorage.getItem('/menu/all/');
+        if (cachedMenu) {
+          this.semuaMenu = JSON.parse(cachedMenu);
+          f7.toast.create({
+            text: 'Menggunakan data offline',
+            closeTimeout: 3000,
+            cssClass: 'warning-toast',
+          }).open();
+        }
+      }
+    },
+    async checkFavoritesStatus() {
+      try {
+        const response = await fetch('http://localhost:5000/api/favorite', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch favorites');
+
+        const favorites = await response.json();
+        const favoriteIds = favorites.map(fav => fav._id);
+
+        this.semuaMenu = this.semuaMenu.map(item => ({
+          ...item,
+          isFavorite: favoriteIds.includes(item._id)
+        }));
+
+      } catch (error) {
+        console.error('Error checking favorites status:', error);
+        const cachedFavorites = localStorage.getItem(`userFavorites_${this.userId}`);
+        if (cachedFavorites) {
+          const favoriteIds = JSON.parse(cachedFavorites).map(fav => fav._id);
+          this.semuaMenu = this.semuaMenu.map(item => ({
+            ...item,
+            isFavorite: favoriteIds.includes(item._id)
+          }));
+        }
+      }
+    },
+    onPageBeforeIn() {
+      const cachedMenu = localStorage.getItem('/menu/all/');
+      if (cachedMenu) {
+        this.semuaMenu = JSON.parse(cachedMenu);
+      }
     }
   },
-  mounted() {
-    localStorage.setItem('/menu/all/', JSON.stringify(this.semuaMenu));
+  async created() {
+    await this.fetchMenuItems();
+
+    window.addEventListener('online', this.syncPendingFavorites);
   },
+  beforeDestroy() {
+    window.removeEventListener('online', this.syncPendingFavorites);
+  },
+  on: {
+    pageBeforeIn: 'onPageBeforeIn'
+  }
 };
 </script>
 
