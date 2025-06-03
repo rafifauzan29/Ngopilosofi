@@ -128,9 +128,14 @@
 
 <script>
 import { f7, f7ready } from 'framework7-vue';
+import { useCartStore } from '../../js/stores/cart';
 
 export default {
   name: 'OrderPage',
+  setup() {
+    const cartStore = useCartStore();
+    return { cartStore };
+  },
   data() {
     return {
       cartItems: [],
@@ -138,7 +143,10 @@ export default {
       editingItem: null,
       editingIndex: -1,
       editQuantity: 1,
-      editSelectedAddons: []
+      editSelectedAddons: [],
+      isLoading: false,
+      isSyncing: false,
+      menuItems: []
     };
   },
   computed: {
@@ -174,53 +182,208 @@ export default {
       if (!addons || addons.length === 0) return 'Tanpa tambahan';
       return addons.map(a => a.nama).join(', ');
     },
-    refreshCart() {
-      this.loadCart();
-      this.showToast('Keranjang diperbarui');
-    },
-    loadCart() {
-      const savedCart = localStorage.getItem('/user/cart/');
-      this.cartItems = savedCart ? JSON.parse(savedCart) : [];
+    async refreshCart() {
+      if (this.isSyncing) return;
 
-      this.cartItems = this.cartItems.map(item => ({
-        ...item,
-        selected: item.selected !== undefined ? item.selected : true
-      }));
+      this.isSyncing = true;
+      try {
+        await Promise.all([this.loadMenu(), this.loadCart()]);
+        this.showToast('Keranjang diperbarui');
+      } catch (error) {
+        console.error('Error refreshing cart:', error);
+        this.showToast('Gagal memuat keranjang');
+      } finally {
+        this.isSyncing = false;
+      }
     },
-    removeItem(index) {
+    async loadMenu() {
+      try {
+        const response = await fetch('http://localhost:5000/api/menu');
+        if (!response.ok) throw new Error('Failed to fetch menu');
+        this.menuItems = await response.json();
+        localStorage.setItem('menuItems', JSON.stringify(this.menuItems));
+      } catch (error) {
+        console.error('Error loading menu:', error);
+        const savedMenu = localStorage.getItem('menuItems');
+        this.menuItems = savedMenu ? JSON.parse(savedMenu) : [];
+      }
+    },
+    async loadCart() {
+      this.isLoading = true;
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          const savedCart = localStorage.getItem('/user/cart/');
+          this.cartItems = savedCart ? JSON.parse(savedCart) : [];
+          this.cartStore.count = this.totalItems; 
+          return;
+        }
+
+        await this.cartStore.fetchCart(); 
+        this.cartItems = this.cartStore.items.map(item => {
+          const menuItem = this.menuItems.find(m => m._id === item.menuItem._id) || item.menuItem;
+          return {
+            _id: item._id,
+            produk: {
+              _id: menuItem._id,
+              nama: menuItem.nama,
+              harga: menuItem.harga,
+              gambar: menuItem.gambar,
+              tambahan: menuItem.tambahan || []
+            },
+            tambahan: item.addons || [],
+            jumlah: item.quantity,
+            totalHarga: item.totalPrice,
+            selected: true
+          };
+        });
+
+        localStorage.setItem('/user/cart/', JSON.stringify(this.cartItems));
+
+      } catch (error) {
+        console.error('Error loading cart:', error);
+        const savedCart = localStorage.getItem('/user/cart/');
+        this.cartItems = savedCart ? JSON.parse(savedCart) : [];
+        this.cartStore.count = this.totalItems; 
+
+        if (navigator.onLine) {
+          this.showToast('Gagal memuat keranjang');
+        } else {
+          this.showToast('Menggunakan data offline');
+        }
+      } finally {
+        this.isLoading = false;
+      }
+    },
+    findCartItemIndex(menuItemId, addons) {
+      return this.cartItems.findIndex(item => {
+        if (item.produk._id !== menuItemId) return false;
+        if (item.tambahan.length !== addons.length) return false;
+
+        const itemAddonIds = item.tambahan.map(a => a._id).sort();
+        const newAddonIds = addons.map(a => a._id).sort();
+
+        return JSON.stringify(itemAddonIds) === JSON.stringify(newAddonIds);
+      });
+    },
+    async addToCart(menuItem, quantity = 1, addons = []) {
+      try {
+        const existingItemIndex = this.findCartItemIndex(menuItem._id, addons);
+
+        if (existingItemIndex !== -1) {
+          await this.updateCartItemQuantity(existingItemIndex, this.cartItems[existingItemIndex].jumlah + quantity);
+          this.showToast('Jumlah item diperbarui');
+          return;
+        }
+
+        const token = localStorage.getItem('token');
+        const totalAddonPrice = addons.reduce((sum, addon) => sum + addon.harga, 0);
+        const totalHarga = (menuItem.harga + totalAddonPrice) * quantity;
+
+        if (!token) {
+          const newItem = {
+            _id: Date.now().toString(),
+            produk: menuItem,
+            tambahan: addons,
+            jumlah: quantity,
+            totalHarga: totalHarga,
+            selected: true
+          };
+          this.cartItems.push(newItem);
+          this.saveLocalCart();
+          this.showToast('Item ditambahkan ke keranjang (offline)');
+          return;
+        }
+
+        const response = await fetch('http://localhost:5000/api/cart', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            menuItemId: menuItem._id,
+            quantity: quantity,
+            addons: addons.map(a => a._id)
+          })
+        });
+
+        if (!response.ok) throw new Error('Failed to add item');
+
+        await this.loadCart();
+        this.showToast('Item ditambahkan ke keranjang');
+
+      } catch (error) {
+        console.error('Error adding to cart:', error);
+        this.showToast('Gagal menambahkan item');
+      }
+    },
+    async updateCartItemQuantity(index, newQuantity) {
+      try {
+        const item = this.cartItems[index];
+        const token = localStorage.getItem('token');
+
+        if (!token) {
+          const totalAddonPrice = item.tambahan.reduce((sum, addon) => sum + addon.harga, 0);
+          const totalHarga = (item.produk.harga + totalAddonPrice) * newQuantity;
+
+          this.cartItems[index] = {
+            ...item,
+            jumlah: newQuantity,
+            totalHarga: totalHarga
+          };
+          this.saveLocalCart();
+          this.cartStore.count = this.totalItems; 
+          return;
+        }
+
+        const success = await this.cartStore.updateCartItem(
+          item._id,
+          newQuantity,
+          item.tambahan
+        );
+
+        if (!success) throw new Error('Failed to update quantity');
+
+        await this.loadCart();
+
+      } catch (error) {
+        console.error('Error updating quantity:', error);
+        throw error;
+      }
+    },
+    async removeItem(index) {
+      const itemId = this.cartItems[index]._id;
+
       this.showConfirmDialog(
         'Apakah Anda yakin ingin menghapus item ini?',
         'Hapus Item',
-        () => {
-          const newCartItems = [...this.cartItems];
-          newCartItems.splice(index, 1);
-          this.cartItems = newCartItems;
-          this.saveCart();
-          this.showToast('Item dihapus dari keranjang');
+        async () => {
+          try {
+            const token = localStorage.getItem('token');
 
-          setTimeout(() => {
-            location.reload();
-          }, 1500);
+            if (!token) {
+              this.cartItems.splice(index, 1);
+              this.saveLocalCart();
+              this.cartStore.count = this.totalItems; 
+              this.showToast('Item dihapus dari keranjang');
+              return;
+            }
+
+            const success = await this.cartStore.removeFromCart(itemId);
+            if (!success) throw new Error('Failed to delete item');
+
+            await this.loadCart();
+            this.showToast('Item dihapus dari keranjang');
+
+          } catch (error) {
+            console.error('Error removing item:', error);
+            this.showToast('Gagal menghapus item');
+          }
         }
       );
     },
-    removeSelected() {
-      if (this.selectedItemsCount === 0) {
-        this.showToast('Tidak ada item yang dipilih');
-        return;
-      }
-
-      this.showConfirmDialog(
-        'Apakah Anda yakin ingin menghapus item yang dipilih?',
-        'Hapus Item Terpilih',
-        () => {
-          this.cartItems = this.cartItems.filter(item => !item.selected);
-          this.saveCart();
-          this.showToast('Item terpilih dihapus');
-        }
-      );
-    },
-    saveCart() {
+    saveLocalCart() {
       localStorage.setItem('/user/cart/', JSON.stringify(this.cartItems));
       this.$emit('cartUpdated', this.cartItems.length);
     },
@@ -229,13 +392,13 @@ export default {
         f7.dialog.confirm(text, title, callback);
       });
     },
-    showToast(message) {
+    showToast(message, type = 'normal') {
       f7ready(() => {
         f7.toast.create({
           text: message,
           closeTimeout: 2000,
           destroyOnClose: true,
-          cssClass: 'custom-toast'
+          cssClass: `custom-toast ${type}`
         }).open();
       });
     },
@@ -243,14 +406,22 @@ export default {
       this.editingIndex = index;
       this.editingItem = JSON.parse(JSON.stringify(this.cartItems[index]));
       this.editQuantity = this.editingItem.jumlah;
-      this.editSelectedAddons = [...this.editingItem.tambahan];
+      this.editSelectedAddons = this.editingItem.tambahan.map(addon => {
+        const productAddon = this.editingItem.produk.tambahan.find(a => a._id === addon._id);
+        return productAddon || addon;
+      });
+
       this.editPopupOpened = true;
     },
+
     isAddonSelected(addon) {
-      return this.editSelectedAddons.some(a => a.nama === addon.nama);
+      return this.editSelectedAddons.some(a => a._id === addon._id);
+    },
+    isAddonSelected(addon) {
+      return this.editSelectedAddons.some(a => a._id === addon._id);
     },
     toggleAddon(addon) {
-      const index = this.editSelectedAddons.findIndex(a => a.nama === addon.nama);
+      const index = this.editSelectedAddons.findIndex(a => a._id === addon._id);
       if (index === -1) {
         this.editSelectedAddons.push(addon);
       } else {
@@ -263,24 +434,125 @@ export default {
     decreaseEditQuantity() {
       if (this.editQuantity > 1) this.editQuantity--;
     },
-    saveEdit() {
+    async saveEdit() {
       const totalAddonPrice = this.editSelectedAddons.reduce((sum, addon) => sum + addon.harga, 0);
       const totalHarga = (this.editingItem.produk.harga + totalAddonPrice) * this.editQuantity;
 
-      const updatedItem = {
-        produk: this.editingItem.produk,
-        tambahan: this.editSelectedAddons,
-        jumlah: this.editQuantity,
-        totalHarga: totalHarga,
-        selected: this.cartItems[this.editingIndex].selected
-      };
+      try {
+        const duplicateIndex = this.cartItems.findIndex((item, index) => {
+          if (index === this.editingIndex) return false;
+          if (item.produk._id !== this.editingItem.produk._id) return false;
+          if (item.tambahan.length !== this.editSelectedAddons.length) return false;
 
-      this.cartItems.splice(this.editingIndex, 1, updatedItem);
-      this.saveCart();
-      this.editPopupOpened = false;
-      this.showToast('Perubahan disimpan');
+          const itemAddonIds = item.tambahan.map(a => a._id).sort();
+          const editAddonIds = this.editSelectedAddons.map(a => a._id).sort();
+
+          return JSON.stringify(itemAddonIds) === JSON.stringify(editAddonIds);
+        });
+
+        if (duplicateIndex !== -1) {
+          const combinedQuantity = this.cartItems[duplicateIndex].jumlah + this.editQuantity;
+
+          if (this.editingIndex > duplicateIndex) {
+            await this.removeItem(this.editingIndex);
+            await this.updateCartItemQuantity(duplicateIndex, combinedQuantity);
+          } else {
+            await this.updateCartItemQuantity(duplicateIndex, combinedQuantity);
+            await this.removeItem(this.editingIndex);
+          }
+
+          this.editPopupOpened = false;
+          this.showToast('Item digabungkan dengan yang sudah ada');
+          return;
+        }
+
+        const token = localStorage.getItem('token');
+
+        if (duplicateIndex !== -1) {
+          const duplicateItem = this.cartItems[duplicateIndex];
+          const newJumlah = duplicateItem.jumlah + this.editQuantity;
+
+          if (!token) {
+            const totalHargaBaru = (duplicateItem.produk.harga +
+              this.editSelectedAddons.reduce((sum, a) => sum + a.harga, 0)) * newJumlah;
+
+            this.cartItems[duplicateIndex] = {
+              ...duplicateItem,
+              jumlah: newJumlah,
+              totalHarga: totalHargaBaru
+            };
+            this.cartItems.splice(this.editingIndex, 1);
+            this.saveLocalCart();
+            this.showToast('Item digabung (offline)');
+            this.editPopupOpened = false;
+            return;
+          }
+
+          await fetch(`http://localhost:5000/api/cart/${duplicateItem._id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              quantity: newJumlah,
+              addons: duplicateItem.tambahan.map(a => a._id)
+            })
+          });
+
+          await fetch(`http://localhost:5000/api/cart/${this.editingItem._id}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          await this.loadCart();
+          this.showToast('Item digabung');
+        } else {
+          if (!token) {
+            const updatedItem = {
+              ...this.editingItem,
+              jumlah: this.editQuantity,
+              tambahan: this.editSelectedAddons,
+              totalHarga
+            };
+            this.cartItems.splice(this.editingIndex, 1, updatedItem);
+            this.saveLocalCart();
+            this.showToast('Item diperbarui (offline)');
+            this.editPopupOpened = false;
+            return;
+          }
+
+          await fetch(`http://localhost:5000/api/cart/${this.editingItem._id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              quantity: this.editQuantity,
+              addons: this.editSelectedAddons.map(a => a._id)
+            })
+          });
+
+          await this.loadCart();
+          this.showToast('Item diperbarui');
+        }
+
+        this.editPopupOpened = false;
+      } catch (error) {
+        console.error('Error saving edit:', error);
+        this.showToast('Gagal menyimpan perubahan');
+      }
     },
-    checkout() {
+    async checkout() {
+      if (!localStorage.getItem('token')) {
+        this.showAlert('Silakan login terlebih dahulu', 'Checkout Gagal');
+        f7.views.main.router.navigate('/login/');
+        return;
+      }
+
       const selectedItems = this.cartItems.filter(item => item.selected);
 
       if (selectedItems.length === 0) {
@@ -288,15 +560,48 @@ export default {
         return;
       }
 
-      const checkoutData = {
-        items: selectedItems,
-        totalItems: this.selectedItemsCount,
-        totalPrice: this.selectedItemsPrice,
-        timestamp: new Date().toISOString()
-      };
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5000/api/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            items: selectedItems.map(item => ({
+              menuItemId: item.produk._id,
+              quantity: item.jumlah,
+              addons: item.tambahan.map(a => a._id),
+              price: item.totalHarga
+            }))
+          })
+        });
 
-      localStorage.setItem('/user/checkout/', JSON.stringify(checkoutData));
-      f7.views.main.router.navigate('/user/checkout/');
+        if (!response.ok) throw new Error('Checkout failed');
+
+        await fetch('http://localhost:5000/api/cart', {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        const orderData = await response.json();
+        localStorage.setItem('/user/checkout/', JSON.stringify({
+          orderId: orderData._id,
+          items: selectedItems,
+          totalItems: this.selectedItemsCount,
+          totalPrice: this.selectedItemsPrice,
+          timestamp: new Date().toISOString()
+        }));
+
+        f7.views.main.router.navigate('/user/order-confirmation/');
+
+      } catch (error) {
+        console.error('Checkout error:', error);
+        this.showAlert('Gagal melakukan checkout. Silakan coba lagi.', 'Checkout Gagal');
+      }
     },
     showAlert(text, title) {
       f7ready(() => {
@@ -305,7 +610,7 @@ export default {
     },
     toggleItemSelection(index) {
       this.cartItems[index].selected = !this.cartItems[index].selected;
-      this.saveCart();
+      this.saveLocalCart();
     },
     toggleSelectAll() {
       const newSelectState = !this.allSelected;
@@ -313,17 +618,62 @@ export default {
         ...item,
         selected: newSelectState
       }));
-      this.saveCart();
+      this.saveLocalCart();
     },
-    areAddonsIdentical(a, b) {
-      if (a.length !== b.length) return false;
-      const aNames = a.map(x => x.nama).sort();
-      const bNames = b.map(x => x.nama).sort();
-      return JSON.stringify(aNames) === JSON.stringify(bNames);
+    async removeSelected() {
+      if (this.selectedItemsCount === 0) {
+        this.showToast('Tidak ada item yang dipilih');
+        return;
+      }
+
+      this.showConfirmDialog(
+        'Apakah Anda yakin ingin menghapus item yang dipilih?',
+        'Hapus Item Terpilih',
+        async () => {
+          try {
+            const token = localStorage.getItem('token');
+
+            if (!token) {
+              this.cartItems = this.cartItems.filter(item => !item.selected);
+              this.saveLocalCart();
+              this.cartStore.count = this.totalItems; // Update store
+              this.showToast('Item terpilih dihapus (offline)');
+              return;
+            }
+
+            const selectedIds = this.cartItems
+              .filter(item => item.selected)
+              .map(item => item._id);
+
+            const success = await this.cartStore.bulkRemoveItems(selectedIds);
+            if (!success) throw new Error('Failed to remove items');
+
+            await this.loadCart();
+            this.showToast('Item terpilih dihapus');
+
+          } catch (error) {
+            console.error('Error removing selected items:', error);
+            this.showToast('Gagal menghapus item terpilih');
+          }
+        }
+      );
+    },
+    setupOnlineHandler() {
+      window.addEventListener('online', async () => {
+        if (navigator.onLine) {
+          try {
+            await Promise.all([this.loadMenu(), this.loadCart()]);
+            this.showToast('Data disinkronisasi');
+          } catch (error) {
+            console.error('Error syncing data:', error);
+          }
+        }
+      });
     }
   },
-  mounted() {
-    this.loadCart();
+  async mounted() {
+    await Promise.all([this.loadMenu(), this.loadCart()]);
+    this.setupOnlineHandler();
   }
 };
 </script>

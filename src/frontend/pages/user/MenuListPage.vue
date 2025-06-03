@@ -89,58 +89,60 @@
 
 <script>
 import { f7 } from 'framework7-vue';
+import { useCartStore } from '../../js/stores/cart';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 
 export default {
   name: 'MenuListPage',
-  data() {
-    return {
-      keyword: '',
-      selectedKategori: 'Semua',
-      kategoriList: [
-        'Semua',
-        'Baru',
-        'Paling Laku',
-        'Kopi',
-        'Susu',
-        'Makanan',
-        'Minuman',
-        'Snack',
-      ],
-      semuaMenu: [],
-      popupOpened: false,
-      selectedItem: null,
-      selectedAddons: [],
-      quantity: 1,
-      userId: localStorage.getItem('userId') || null,
-      pendingFavorites: JSON.parse(localStorage.getItem('pendingFavorites') || '[]')
-    };
-  },
-  computed: {
-    filteredMenu() {
-      return this.semuaMenu.filter((item) => {
+  setup() {
+    const cartStore = useCartStore();
+    const keyword = ref('');
+    const selectedKategori = ref('Semua');
+    const semuaMenu = ref([]);
+    const popupOpened = ref(false);
+    const selectedItem = ref(null);
+    const selectedAddons = ref([]);
+    const quantity = ref(1);
+    const userId = ref(localStorage.getItem('userId') || null);
+    const pendingFavorites = ref(JSON.parse(localStorage.getItem('pendingFavorites') || '[]'));
+
+    const kategoriList = [
+      'Semua',
+      'Baru',
+      'Paling Laku',
+      'Kopi',
+      'Susu',
+      'Makanan',
+      'Minuman',
+      'Snack',
+    ];
+
+    const filteredMenu = computed(() => {
+      return semuaMenu.value.filter((item) => {
         const matchKategori =
-          this.selectedKategori === 'Semua' ||
+          selectedKategori.value === 'Semua' ||
           (Array.isArray(item.kategori)
-            ? item.kategori.includes(this.selectedKategori)
-            : item.kategori === this.selectedKategori);
-        const matchKeyword = item.nama.toLowerCase().includes(this.keyword.toLowerCase());
+            ? item.kategori.includes(selectedKategori.value)
+            : item.kategori === selectedKategori.value);
+        const matchKeyword = item.nama.toLowerCase().includes(keyword.value.toLowerCase());
         return matchKategori && matchKeyword;
       });
-    }
-  },
-  methods: {
-    formatRupiah(angka) {
+    });
+
+    const formatRupiah = (angka) => {
       return new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
         minimumFractionDigits: 0,
       }).format(angka);
-    },
-    onSearch(event) {
-      this.keyword = event.target.value;
-    },
-    async toggleFavorite(item) {
-      if (!this.userId) {
+    };
+
+    const onSearch = (event) => {
+      keyword.value = event.target.value;
+    };
+
+    const toggleFavorite = async (item) => {
+      if (!userId.value) {
         f7.toast.create({
           text: 'Silakan login terlebih dahulu',
           closeTimeout: 3000,
@@ -159,7 +161,7 @@ export default {
         return;
       }
 
-      this.semuaMenu = this.semuaMenu.map(menu => {
+      semuaMenu.value = semuaMenu.value.map(menu => {
         if (menu._id === item._id) {
           return { ...menu, isFavorite: !menu.isFavorite };
         }
@@ -167,12 +169,12 @@ export default {
       });
 
       if (!navigator.onLine) {
-        this.pendingFavorites.push({
+        pendingFavorites.value.push({
           menuId: item._id,
           action: item.isFavorite ? 'add' : 'remove',
           timestamp: new Date().getTime()
         });
-        localStorage.setItem('pendingFavorites', JSON.stringify(this.pendingFavorites));
+        localStorage.setItem('pendingFavorites', JSON.stringify(pendingFavorites.value));
 
         f7.toast.create({
           text: 'Akan disinkronisasi ketika online',
@@ -184,7 +186,6 @@ export default {
 
       try {
         item.isFavorite = !item.isFavorite;
-
         const action = item.isFavorite ? 'add' : 'remove';
 
         const response = await fetch(`http://localhost:5000/api/favorite/${item._id}`, {
@@ -196,7 +197,7 @@ export default {
 
         if (!response.ok) throw new Error('Failed to update favorite');
 
-        const result = await response.json();
+        await response.json();
 
         f7.toast.create({
           text: action === 'add' ? 'Ditambahkan ke favorit' : 'Dihapus dari favorit',
@@ -204,12 +205,12 @@ export default {
           cssClass: action === 'add' ? 'success-toast' : 'danger-toast',
         }).open();
 
-        if (this.pendingFavorites.length > 0) {
-          await this.syncPendingFavorites();
+        if (pendingFavorites.value.length > 0) {
+          await syncPendingFavorites();
         }
       } catch (error) {
         console.error('Error toggling favorite:', error);
-        this.semuaMenu = this.semuaMenu.map(menu => {
+        semuaMenu.value = semuaMenu.value.map(menu => {
           if (menu._id === item._id) {
             return { ...menu, isFavorite: !menu.isFavorite };
           }
@@ -221,11 +222,11 @@ export default {
           cssClass: 'error-toast',
         }).open();
       }
-    },
+    };
 
-    async syncPendingFavorites() {
+    const syncPendingFavorites = async () => {
       try {
-        for (const pending of this.pendingFavorites) {
+        for (const pending of pendingFavorites.value) {
           await fetch(`http://localhost:5000/api/favorite/${pending.menuId}`, {
             method: 'POST',
             headers: {
@@ -233,111 +234,79 @@ export default {
             }
           });
         }
-
-        this.pendingFavorites = [];
+        pendingFavorites.value = [];
         localStorage.removeItem('pendingFavorites');
-
       } catch (error) {
         console.error('Error syncing pending favorites:', error);
       }
-    },
-    openDetail(item) {
-      this.selectedItem = item;
-      this.selectedAddons = [];
-      this.quantity = 1;
-      this.popupOpened = true;
-    },
-    increaseQuantity() {
-      this.quantity++;
-    },
-    decreaseQuantity() {
-      if (this.quantity > 1) this.quantity--;
-    },
-    isAddonSelected(addon) {
-      return this.selectedAddons.some((a) => a.nama === addon.nama);
-    },
-    toggleAddon(addon) {
-      const index = this.selectedAddons.findIndex((a) => a.nama === addon.nama);
+    };
+
+    const openDetail = (item) => {
+      selectedItem.value = item;
+      selectedAddons.value = [];
+      quantity.value = 1;
+      popupOpened.value = true;
+    };
+
+    const increaseQuantity = () => {
+      quantity.value++;
+    };
+
+    const decreaseQuantity = () => {
+      if (quantity.value > 1) quantity.value--;
+    };
+
+    const isAddonSelected = (addon) => {
+      return selectedAddons.value.some((a) => a.nama === addon.nama);
+    };
+
+    const toggleAddon = (addon) => {
+      const index = selectedAddons.value.findIndex((a) => a.nama === addon.nama);
       if (index === -1) {
-        this.selectedAddons.push(addon);
+        selectedAddons.value.push(addon);
       } else {
-        this.selectedAddons.splice(index, 1);
+        selectedAddons.value.splice(index, 1);
       }
-    },
-    async addToCart() {
-      const totalAddonPrice = this.selectedAddons.reduce(
-        (sum, addon) => sum + addon.harga,
-        0
-      );
-      const totalHarga = (this.selectedItem.harga + totalAddonPrice) * this.quantity;
+    };
 
-      const cartItem = {
-        produk: this.selectedItem,
-        tambahan: [...this.selectedAddons],
-        jumlah: this.quantity,
-        totalHarga: totalHarga,
-        selected: true,
-      };
-
-      let existingCart = JSON.parse(localStorage.getItem('/user/cart/') || '[]');
-
-      const isSameAddons = (a, b) => {
-        if (a.length !== b.length) return false;
-        const aSorted = [...a].map(x => x.nama).sort();
-        const bSorted = [...b].map(x => x.nama).sort();
-        return JSON.stringify(aSorted) === JSON.stringify(bSorted);
-      };
-
-      const existingIndex = existingCart.findIndex(
-        item =>
-          item.produk._id === cartItem.produk._id &&
-          isSameAddons(item.tambahan, cartItem.tambahan)
+    const addToCart = async () => {
+      const success = await cartStore.addToCart(
+        selectedItem.value._id,
+        quantity.value,
+        selectedAddons.value
       );
 
-      if (existingIndex !== -1) {
-        const existingItem = existingCart[existingIndex];
-        const newJumlah = existingItem.jumlah + cartItem.jumlah;
-        const newTotalHarga = (cartItem.produk.harga +
-          cartItem.tambahan.reduce((sum, addon) => sum + addon.harga, 0)) * newJumlah;
-
-        existingCart[existingIndex].jumlah = newJumlah;
-        existingCart[existingIndex].totalHarga = newTotalHarga;
-      } else {
-        existingCart.push(cartItem);
+      if (success) {
+        popupOpened.value = false;
       }
+    };
 
-      localStorage.setItem('/user/cart/', JSON.stringify(existingCart));
+    const showToast = (message) => {
+      f7.toast.create({
+        text: message,
+        closeTimeout: 3000,
+        cssClass: 'success-toast',
+      }).open();
+    };
 
-      this.showToast('Produk ditambahkan ke keranjang');
-      this.popupOpened = false;
-    },
-    showToast(message) {
-      f7.toast
-        .create({
-          text: message,
-          closeTimeout: 3000,
-          cssClass: 'success-toast',
-        })
-        .open();
-    },
-    async fetchMenuItems() {
+    const fetchMenuItems = async () => {
       try {
         const response = await fetch('http://localhost:5000/api/menu');
         if (!response.ok) throw new Error('Failed to fetch menu items');
 
         const data = await response.json();
-        this.semuaMenu = data;
+        semuaMenu.value = data;
 
-        if (this.userId) {
-          await this.checkFavoritesStatus();
+        if (userId.value) {
+          await checkFavoritesStatus();
         }
 
-        localStorage.setItem('/menu/all/', JSON.stringify(this.semuaMenu));
+        localStorage.setItem('/menu/all/', JSON.stringify(semuaMenu.value));
       } catch (error) {
         console.error('Error fetching menu items:', error);
         const cachedMenu = localStorage.getItem('/menu/all/');
         if (cachedMenu) {
-          this.semuaMenu = JSON.parse(cachedMenu);
+          semuaMenu.value = JSON.parse(cachedMenu);
           f7.toast.create({
             text: 'Menggunakan data offline',
             closeTimeout: 3000,
@@ -345,8 +314,9 @@ export default {
           }).open();
         }
       }
-    },
-    async checkFavoritesStatus() {
+    };
+
+    const checkFavoritesStatus = async () => {
       try {
         const response = await fetch('http://localhost:5000/api/favorite', {
           headers: {
@@ -359,40 +329,67 @@ export default {
         const favorites = await response.json();
         const favoriteIds = favorites.map(fav => fav._id);
 
-        this.semuaMenu = this.semuaMenu.map(item => ({
+        semuaMenu.value = semuaMenu.value.map(item => ({
           ...item,
           isFavorite: favoriteIds.includes(item._id)
         }));
 
       } catch (error) {
         console.error('Error checking favorites status:', error);
-        const cachedFavorites = localStorage.getItem(`userFavorites_${this.userId}`);
+        const cachedFavorites = localStorage.getItem(`userFavorites_${userId.value}`);
         if (cachedFavorites) {
           const favoriteIds = JSON.parse(cachedFavorites).map(fav => fav._id);
-          this.semuaMenu = this.semuaMenu.map(item => ({
+          semuaMenu.value = semuaMenu.value.map(item => ({
             ...item,
             isFavorite: favoriteIds.includes(item._id)
           }));
         }
       }
-    },
-    onPageBeforeIn() {
+    };
+
+    const onPageBeforeIn = () => {
       const cachedMenu = localStorage.getItem('/menu/all/');
       if (cachedMenu) {
-        this.semuaMenu = JSON.parse(cachedMenu);
+        semuaMenu.value = JSON.parse(cachedMenu);
       }
-    }
-  },
-  async created() {
-    await this.fetchMenuItems();
+    };
 
-    window.addEventListener('online', this.syncPendingFavorites);
-  },
-  beforeDestroy() {
-    window.removeEventListener('online', this.syncPendingFavorites);
+    onMounted(async () => {
+      await fetchMenuItems();
+      window.addEventListener('online', syncPendingFavorites);
+    });
+
+    onBeforeUnmount(() => {
+      window.removeEventListener('online', syncPendingFavorites);
+    });
+
+    return {
+      keyword,
+      selectedKategori,
+      kategoriList,
+      semuaMenu,
+      popupOpened,
+      selectedItem,
+      selectedAddons,
+      quantity,
+      userId,
+      pendingFavorites,
+      filteredMenu,
+      formatRupiah,
+      onSearch,
+      toggleFavorite,
+      openDetail,
+      increaseQuantity,
+      decreaseQuantity,
+      isAddonSelected,
+      toggleAddon,
+      addToCart,
+      showToast,
+      onPageBeforeIn
+    };
   },
   on: {
-    pageBeforeIn: 'onPageBeforeIn'
+    pageBeforeIn: 'onPageBeforeIn',
   }
 };
 </script>

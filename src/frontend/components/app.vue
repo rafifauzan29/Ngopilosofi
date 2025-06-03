@@ -25,71 +25,66 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { f7, f7ready } from 'framework7-vue';
-import { getDevice } from 'framework7/lite-bundle';
-import routes from '../js/routes';
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { f7, f7ready } from 'framework7-vue'
+import { getDevice } from 'framework7/lite-bundle'
+import routes from '../js/routes'
+import { useCartStore } from '../js/stores/cart'
 
 export default {
   setup() {
-    const device = getDevice();
-    const cartCount = ref(0);
-    const currentPath = ref('/');
-    const isAuthenticated = ref(false);
+    const device = getDevice()
+    const cartStore = useCartStore()
+    const currentPath = ref('/')
+    const isAuthenticated = ref(false)
     
-    const hideNavbarRoutes = ['/login/', '/register/', '/'];
-    const hideToolbarRoutes = ['/login/', '/register/', '/'];
+    const hideNavbarRoutes = ['/login/', '/register/', '/']
+    const hideToolbarRoutes = ['/login/', '/register/', '/']
     
     const showNavbar = computed(() => {
-      return !hideNavbarRoutes.includes(currentPath.value);
-    });
+      return !hideNavbarRoutes.includes(currentPath.value)
+    })
     
     const showToolbar = computed(() => {
-      return isAuthenticated.value && !hideToolbarRoutes.includes(currentPath.value);
-    });
+      return isAuthenticated.value && !hideToolbarRoutes.includes(currentPath.value)
+    })
     
-    const updateCartCount = () => {
-      try {
-        const cart = JSON.parse(localStorage.getItem('/user/cart/') || '[]');
-        cartCount.value = cart.length;
-      } catch (e) {
-        console.error('Error reading cart:', e);
-        cartCount.value = 0;
-      }
-    };
+    const cartCount = computed(() => cartStore.count)
     
     const checkAuth = () => {
-      const token = localStorage.getItem('token');
-      isAuthenticated.value = !!token;
-    };
+      const token = localStorage.getItem('token')
+      isAuthenticated.value = !!token
+      if (token) {
+        cartStore.fetchCart()
+      } else {
+        cartStore.count = 0
+      }
+    }
     
     const handleRouteChange = (route) => {
-      currentPath.value = route.url;
-      checkAuth();
-    };
+      currentPath.value = route.url
+      checkAuth()
+    }
     
     const handleStorageEvent = (event) => {
-      if (event.key === 'cart') {
-        updateCartCount();
-      } else if (event.key === 'token') {
-        checkAuth();
+      if (event.key === 'token') {
+        checkAuth()
       }
-    };
+    }
     
     onMounted(() => {
       f7ready(() => {
-        currentPath.value = f7.views.main.router.url;
-        f7.on('routeChange', handleRouteChange);
-        updateCartCount();
-        checkAuth();
-        window.addEventListener('storage', handleStorageEvent);
-      });
-    });
+        currentPath.value = f7.views.main.router.url
+        f7.on('routeChange', handleRouteChange)
+        checkAuth()
+        window.addEventListener('storage', handleStorageEvent)
+      })
+    })
     
     onUnmounted(() => {
-      window.removeEventListener('storage', handleStorageEvent);
-      f7.off('routeChange', handleRouteChange);
-    });
+      window.removeEventListener('storage', handleStorageEvent)
+      f7.off('routeChange', handleRouteChange)
+    })
     
     const f7params = {
       name: 'Ngopilosofi',
@@ -112,24 +107,24 @@ export default {
       },
       router: {
         beforeEnter: async (routeTo, routeFrom, resolve, reject) => {
-          const protectedRoutes = ['/user/home/', '/user/favorite/', '/user/menu-list/', '/user/order/', '/user/profile/'];
-          const authRequired = protectedRoutes.includes(routeTo.url);
-          const token = localStorage.getItem('token');
+          const protectedRoutes = ['/user/home/', '/user/favorite/', '/user/menu-list/', '/user/order/', '/user/profile/']
+          const authRequired = protectedRoutes.includes(routeTo.url)
+          const token = localStorage.getItem('token')
           
           if (authRequired && !token) {
-            resolve({ url: '/login/' });
-            return;
+            resolve({ url: '/login/' })
+            return
           }
           
           if (['/login/', '/register/'].includes(routeTo.url) && token) {
-            resolve({ url: '/user/home/' });
-            return;
+            resolve({ url: '/user/home/' })
+            return
           }
           
-          resolve();
+          resolve()
         }
       }
-    };
+    }
 
     return {
       f7params,
@@ -137,9 +132,9 @@ export default {
       showNavbar,
       showToolbar,
       isAuthenticated
-    };
+    }
   },
-};
+}
 </script>
 
 <style scoped>
