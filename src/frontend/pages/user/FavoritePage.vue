@@ -72,30 +72,31 @@
 
 <script>
 import { f7 } from 'framework7-vue';
+import { useCartStore } from '../../js/stores/cart';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 
 export default {
   name: 'FavoritePage',
-  data() {
-    return {
-      favoriteItems: [],
-      popupOpened: false,
-      selectedItem: null,
-      selectedAddons: [],
-      quantity: 1,
-      userId: localStorage.getItem('userId') || null,
-      pendingFavorites: JSON.parse(localStorage.getItem('pendingFavorites') || '[]')
-    };
-  },
-  methods: {
-    formatRupiah(angka) {
+  setup() {
+    const cartStore = useCartStore();
+    const favoriteItems = ref([]);
+    const popupOpened = ref(false);
+    const selectedItem = ref(null);
+    const selectedAddons = ref([]);
+    const quantity = ref(1);
+    const userId = ref(localStorage.getItem('userId') || null);
+    const pendingFavorites = ref(JSON.parse(localStorage.getItem('pendingFavorites') || '[]'));
+
+    const formatRupiah = (angka) => {
       return new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
         minimumFractionDigits: 0,
       }).format(angka);
-    },
-    async fetchFavoriteItems() {
-      if (!this.userId) {
+    };
+
+    const fetchFavoriteItems = async () => {
+      if (!userId.value) {
         f7.toast.create({
           text: 'Silakan login terlebih dahulu',
           closeTimeout: 3000,
@@ -113,16 +114,16 @@ export default {
         
         if (!response.ok) throw new Error('Failed to fetch favorites');
         
-        this.favoriteItems = await response.json();
+        favoriteItems.value = await response.json();
 
-        localStorage.setItem(`userFavorites_${this.userId}`, JSON.stringify(this.favoriteItems));
+        localStorage.setItem(`userFavorites_${userId.value}`, JSON.stringify(favoriteItems.value));
         
       } catch (error) {
         console.error('Error fetching favorites:', error);
 
-        const cachedFavorites = localStorage.getItem(`userFavorites_${this.userId}`);
+        const cachedFavorites = localStorage.getItem(`userFavorites_${userId.value}`);
         if (cachedFavorites) {
-          this.favoriteItems = JSON.parse(cachedFavorites);
+          favoriteItems.value = JSON.parse(cachedFavorites);
           f7.toast.create({
             text: 'Menggunakan data offline',
             closeTimeout: 3000,
@@ -130,9 +131,10 @@ export default {
           }).open();
         }
       }
-    },
-    async toggleFavorite(item) {
-      if (!this.userId) {
+    };
+
+    const toggleFavorite = async (item) => {
+      if (!userId.value) {
         f7.toast.create({
           text: 'Silakan login terlebih dahulu',
           closeTimeout: 3000,
@@ -141,15 +143,25 @@ export default {
         return;
       }
 
+      const token = localStorage.getItem('token');
+      if (!token) {
+        f7.toast.create({
+          text: 'Token tidak ditemukan, silakan login ulang',
+          closeTimeout: 3000,
+          cssClass: 'error-toast',
+        }).open();
+        return;
+      }
+
       if (!navigator.onLine) {
-        this.pendingFavorites.push({
+        pendingFavorites.value.push({
           menuId: item._id,
           action: 'remove',
           timestamp: new Date().getTime()
         });
-        localStorage.setItem('pendingFavorites', JSON.stringify(this.pendingFavorites));
+        localStorage.setItem('pendingFavorites', JSON.stringify(pendingFavorites.value));
       
-        this.favoriteItems = this.favoriteItems.filter(i => i._id !== item._id);
+        favoriteItems.value = favoriteItems.value.filter(i => i._id !== item._id);
         
         f7.toast.create({
           text: 'Akan disinkronisasi ketika online',
@@ -163,13 +175,13 @@ export default {
         const response = await fetch(`http://localhost:5000/api/favorite/${item._id}`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${token}`
           }
         });
 
         if (!response.ok) throw new Error('Failed to remove favorite');
 
-        this.favoriteItems = this.favoriteItems.filter(i => i._id !== item._id);
+        favoriteItems.value = favoriteItems.value.filter(i => i._id !== item._id);
         
         f7.toast.create({
           text: 'Dihapus dari favorit',
@@ -177,8 +189,8 @@ export default {
           cssClass: 'success-toast',
         }).open();
 
-        if (this.pendingFavorites.length > 0) {
-          await this.syncPendingFavorites();
+        if (pendingFavorites.value.length > 0) {
+          await syncPendingFavorites();
         }
       } catch (error) {
         console.error('Error removing favorite:', error);
@@ -188,110 +200,107 @@ export default {
           cssClass: 'error-toast',
         }).open();
       }
-    },
-    async syncPendingFavorites() {
+    };
+
+    const syncPendingFavorites = async () => {
       try {
-        for (const pending of this.pendingFavorites) {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        for (const pending of pendingFavorites.value) {
           await fetch(`http://localhost:5000/api/favorite/${pending.menuId}`, {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
+              'Authorization': `Bearer ${token}`
             }
           });
         }
 
-        this.pendingFavorites = [];
+        pendingFavorites.value = [];
         localStorage.removeItem('pendingFavorites');
 
-        await this.fetchFavoriteItems();
+        await fetchFavoriteItems();
       } catch (error) {
         console.error('Error syncing pending favorites:', error);
       }
-    },
-    openDetail(item) {
-      this.selectedItem = item;
-      this.selectedAddons = [];
-      this.quantity = 1;
-      this.popupOpened = true;
-    },
-    increaseQuantity() {
-      this.quantity++;
-    },
-    decreaseQuantity() {
-      if (this.quantity > 1) this.quantity--;
-    },
-    isAddonSelected(addon) {
-      return this.selectedAddons.some((a) => a.nama === addon.nama);
-    },
-    toggleAddon(addon) {
-      const index = this.selectedAddons.findIndex((a) => a.nama === addon.nama);
+    };
+
+    const openDetail = (item) => {
+      selectedItem.value = item;
+      selectedAddons.value = [];
+      quantity.value = 1;
+      popupOpened.value = true;
+    };
+
+    const increaseQuantity = () => {
+      quantity.value++;
+    };
+
+    const decreaseQuantity = () => {
+      if (quantity.value > 1) quantity.value--;
+    };
+
+    const isAddonSelected = (addon) => {
+      return selectedAddons.value.some((a) => a.nama === addon.nama);
+    };
+
+    const toggleAddon = (addon) => {
+      const index = selectedAddons.value.findIndex((a) => a.nama === addon.nama);
       if (index === -1) {
-        this.selectedAddons.push(addon);
+        selectedAddons.value.push(addon);
       } else {
-        this.selectedAddons.splice(index, 1);
+        selectedAddons.value.splice(index, 1);
       }
-    },
-    addToCart() {
-      const totalAddonPrice = this.selectedAddons.reduce((sum, addon) => sum + addon.harga, 0);
-      const totalHarga = (this.selectedItem.harga + totalAddonPrice) * this.quantity;
+    };
 
-      const cartItem = {
-        produk: this.selectedItem,
-        tambahan: [...this.selectedAddons],
-        jumlah: this.quantity,
-        totalHarga: totalHarga,
-        selected: true,
-      };
-
-      let existingCart = JSON.parse(localStorage.getItem('/user/cart/') || '[]');
-
-      const isSameAddons = (a, b) => {
-        if (a.length !== b.length) return false;
-        const aSorted = [...a].map(x => x.nama).sort();
-        const bSorted = [...b].map(x => x.nama).sort();
-        return JSON.stringify(aSorted) === JSON.stringify(bSorted);
-      };
-
-      const existingIndex = existingCart.findIndex(
-        item =>
-          item.produk._id === cartItem.produk._id &&
-          isSameAddons(item.tambahan, cartItem.tambahan)
+    const addToCart = async () => {
+      const success = await cartStore.addToCart(
+        selectedItem.value._id,
+        quantity.value,
+        selectedAddons.value
       );
 
-      if (existingIndex !== -1) {
-        const existingItem = existingCart[existingIndex];
-        const newJumlah = existingItem.jumlah + cartItem.jumlah;
-        const newTotalHarga = (cartItem.produk.harga +
-          cartItem.tambahan.reduce((sum, addon) => sum + addon.harga, 0)) * newJumlah;
-
-        existingCart[existingIndex].jumlah = newJumlah;
-        existingCart[existingIndex].totalHarga = newTotalHarga;
-      } else {
-        existingCart.push(cartItem);
+      if (success) {
+        popupOpened.value = false;
+        showToast('Produk ditambahkan ke keranjang');
       }
+    };
 
-      localStorage.setItem('/user/cart/', JSON.stringify(existingCart));
+    const showToast = (message) => {
+      f7.toast.create({
+        text: message,
+        closeTimeout: 3000,
+        cssClass: 'success-toast',
+      }).open();
+    };
 
-      this.showToast('Produk ditambahkan ke keranjang');
-      this.popupOpened = false;
-    },
-    showToast(message) {
-      f7.toast
-        .create({
-          text: message,
-          position: 'bottom',
-          closeTimeout: 2000,
-          cssClass: 'success-toast',
-        })
-        .open();
-    }
-  },
-  async mounted() {
-    await this.fetchFavoriteItems();
-    window.addEventListener('online', this.syncPendingFavorites);
-  },
-  beforeDestroy() {
-    window.removeEventListener('online', this.syncPendingFavorites);
+    onMounted(async () => {
+      await fetchFavoriteItems();
+      window.addEventListener('online', syncPendingFavorites);
+    });
+
+    onBeforeUnmount(() => {
+      window.removeEventListener('online', syncPendingFavorites);
+    });
+
+    return {
+      favoriteItems,
+      popupOpened,
+      selectedItem,
+      selectedAddons,
+      quantity,
+      userId,
+      pendingFavorites,
+      formatRupiah,
+      toggleFavorite,
+      openDetail,
+      increaseQuantity,
+      decreaseQuantity,
+      isAddonSelected,
+      toggleAddon,
+      addToCart,
+      showToast
+    };
   }
 };
 </script>
