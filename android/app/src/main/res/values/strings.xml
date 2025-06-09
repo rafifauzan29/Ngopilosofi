@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ngopilosofi</string>
+    <string name="title_activity_main">ngopilosofi</string>
+    <string name="package_name">com.ngopilosofi.app</string>
+    <string name="custom_url_scheme">com.ngopilosofi.app</string>
+</resources>

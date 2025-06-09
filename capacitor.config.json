@@ -1,0 +1,6 @@
+{
+  "appId": "com.ngopilosofi.app",
+  "appName": "ngopilosofi",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}

@@ -23,7 +23,7 @@ app.use('/api/cart', cartRoutes);
 
 app.get('/', (req, res) => res.send('API Ngopilosofi is running'));
 
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/ngopilosofi')
+mongoose.connect(process.env.MONGODB_URI)
 
   .then(() => {
     console.log('MongoDB connected');
