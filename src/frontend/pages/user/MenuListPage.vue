@@ -188,7 +188,7 @@ export default {
         item.isFavorite = !item.isFavorite;
         const action = item.isFavorite ? 'add' : 'remove';
 
-        const response = await fetch(`http://localhost:5000/api/favorite/${item._id}`, {
+        const response = await fetch(`https://ngopilosofi-production.up.railway.app/api/favorite/${item._id}`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -227,7 +227,7 @@ export default {
     const syncPendingFavorites = async () => {
       try {
         for (const pending of pendingFavorites.value) {
-          await fetch(`http://localhost:5000/api/favorite/${pending.menuId}`, {
+          await fetch(`https://ngopilosofi-production.up.railway.app/api/favorite/${pending.menuId}`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -291,7 +291,7 @@ export default {
 
     const fetchMenuItems = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/menu');
+        const response = await fetch('https://ngopilosofi-production.up.railway.app/api/menu');
         if (!response.ok) throw new Error('Failed to fetch menu items');
 
         const data = await response.json();
@@ -318,7 +318,7 @@ export default {
 
     const checkFavoritesStatus = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/favorite', {
+        const response = await fetch('https://ngopilosofi-production.up.railway.app/api/favorite', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }

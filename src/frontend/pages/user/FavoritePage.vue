@@ -106,7 +106,7 @@ export default {
       }
 
       try {
-        const response = await fetch('http://localhost:5000/api/favorite', {
+        const response = await fetch('https://ngopilosofi-production.up.railway.app/api/favorite', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -172,7 +172,7 @@ export default {
       }
 
       try {
-        const response = await fetch(`http://localhost:5000/api/favorite/${item._id}`, {
+        const response = await fetch(`https://ngopilosofi-production.up.railway.app/api/favorite/${item._id}`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -208,7 +208,7 @@ export default {
         if (!token) return;
 
         for (const pending of pendingFavorites.value) {
-          await fetch(`http://localhost:5000/api/favorite/${pending.menuId}`, {
+          await fetch(`https://ngopilosofi-production.up.railway.app/api/favorite/${pending.menuId}`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`

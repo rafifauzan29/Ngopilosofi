@@ -10,7 +10,7 @@ export default async () => {
 
   return {
     plugins: [
-      vue({ template: { compilerOptions: { isCustomElement: (tag) => tag.includes('swiper-') } } }), ,
+      vue({ template: { compilerOptions: { isCustomElement: (tag) => tag.includes('swiper-') } } }),
 
     ],
     root: SRC_DIR,

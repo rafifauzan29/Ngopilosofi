@@ -193,7 +193,7 @@ export default {
           avatar: this.editProfile.avatar 
         };
 
-        const response = await fetch('http://localhost:5000/api/profile/updateProfile', {
+        const response = await fetch('https://ngopilosofi-production.up.railway.app/api/profile/updateProfile', {
           method: 'PUT', 
           headers: {
             'Content-Type': 'application/json',

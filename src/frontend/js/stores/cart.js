@@ -14,7 +14,7 @@ export const useCartStore = defineStore('cart', () => {
       const token = localStorage.getItem('token')
       if (!token) return false
       
-      const response = await fetch(`http://localhost:5000/api/cart/${itemId}`, {
+      const response = await fetch(`https://ngopilosofi-production.up.railway.app/api/cart/${itemId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -46,7 +46,7 @@ export const useCartStore = defineStore('cart', () => {
       const token = localStorage.getItem('token')
       if (!token) return false
       
-      const response = await fetch('http://localhost:5000/api/cart/bulk-delete', {
+      const response = await fetch('https://ngopilosofi-production.up.railway.app/api/cart/bulk-delete', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,7 +79,7 @@ export const useCartStore = defineStore('cart', () => {
         return
       }
       
-      const response = await fetch('http://localhost:5000/api/cart', {
+      const response = await fetch('https://ngopilosofi-production.up.railway.app/api/cart', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -114,7 +114,7 @@ export const useCartStore = defineStore('cart', () => {
         return false
       }
       
-      const response = await fetch('http://localhost:5000/api/cart', {
+      const response = await fetch('https://ngopilosofi-production.up.railway.app/api/cart', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -158,7 +158,7 @@ export const useCartStore = defineStore('cart', () => {
       const token = localStorage.getItem('token')
       if (!token) return false
       
-      const response = await fetch(`http://localhost:5000/api/cart/${itemId}`, {
+      const response = await fetch(`https://ngopilosofi-production.up.railway.app/api/cart/${itemId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

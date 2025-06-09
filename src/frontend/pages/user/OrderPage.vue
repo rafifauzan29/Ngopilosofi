@@ -198,7 +198,7 @@ export default {
     },
     async loadMenu() {
       try {
-        const response = await fetch('http://localhost:5000/api/menu');
+        const response = await fetch('https://ngopilosofi-production.up.railway.app/api/menu');
         if (!response.ok) throw new Error('Failed to fetch menu');
         this.menuItems = await response.json();
         localStorage.setItem('menuItems', JSON.stringify(this.menuItems));
@@ -295,7 +295,7 @@ export default {
           return;
         }
 
-        const response = await fetch('http://localhost:5000/api/cart', {
+        const response = await fetch('https://ngopilosofi-production.up.railway.app/api/cart', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -488,7 +488,7 @@ export default {
             return;
           }
 
-          await fetch(`http://localhost:5000/api/cart/${duplicateItem._id}`, {
+          await fetch(`https://ngopilosofi-production.up.railway.app/api/cart/${duplicateItem._id}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -500,7 +500,7 @@ export default {
             })
           });
 
-          await fetch(`http://localhost:5000/api/cart/${this.editingItem._id}`, {
+          await fetch(`https://ngopilosofi-production.up.railway.app/api/cart/${this.editingItem._id}`, {
             method: 'DELETE',
             headers: {
               'Authorization': `Bearer ${token}`
@@ -524,7 +524,7 @@ export default {
             return;
           }
 
-          await fetch(`http://localhost:5000/api/cart/${this.editingItem._id}`, {
+          await fetch(`https://ngopilosofi-production.up.railway.app/api/cart/${this.editingItem._id}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -562,7 +562,7 @@ export default {
 
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/orders', {
+        const response = await fetch('https://ngopilosofi-production.up.railway.app/api/orders', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -580,7 +580,7 @@ export default {
 
         if (!response.ok) throw new Error('Checkout failed');
 
-        await fetch('http://localhost:5000/api/cart', {
+        await fetch('https://ngopilosofi-production.up.railway.app/api/cart', {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`

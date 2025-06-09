@@ -9,7 +9,7 @@ import axios from 'axios'
 
 const pinia = createPinia()
 
-axios.defaults.baseURL = 'http://localhost:5000/api'
+axios.defaults.baseURL = 'http://ngopilosofi-production.up.railway.app/api'
 axios.interceptors.request.use(config => {
   const token = localStorage.getItem('token')
   if (token) {
