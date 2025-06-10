@@ -1,0 +1,14 @@
+:root {
+  --f7-safe-area-top: env(safe-area-inset-top);
+  --f7-safe-area-bottom: env(safe-area-inset-bottom);
+}
+
+.navbar {
+  padding-top: var(--f7-safe-area-top);
+  height: calc(var(--f7-navbar-height) + var(--f7-safe-area-top));
+}
+
+.toolbar {
+  padding-bottom: var(--f7-safe-area-bottom);
+  height: calc(var(--f7-toolbar-height) + var(--f7-safe-area-bottom));
+}

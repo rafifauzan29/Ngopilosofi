@@ -2,5 +2,16 @@
   "appId": "com.ngopilosofi.app",
   "appName": "ngopilosofi",
   "webDir": "www",
-  "bundledWebRuntime": false
+  "bundledWebRuntime": false,
+  "plugins": {
+    "StatusBar": {
+      "overlaysWebView": false,
+      "backgroundColor": "#331c2c",
+      "style": "dark"
+    }
+  },
+  "android": {
+    "backgroundColor": "#ffffff",
+    "webViewDebuggingEnabled": true
+  }
 }
