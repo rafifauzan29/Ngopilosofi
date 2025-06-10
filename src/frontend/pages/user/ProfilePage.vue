@@ -91,9 +91,12 @@
 
           <f7-list form>
             <f7-list-input label="Nama" type="text" placeholder="Nama Anda" :value="editProfile.name"
-              @input="editProfile.name = $event.target.value"></f7-list-input>
-            <f7-list-input label="Email" type="email" placeholder="Email Anda"
-              :value="editProfile.email"></f7-list-input>
+              @input="editProfile.name = $event.target.value">
+            </f7-list-input>
+            <f7-list-input label="Email" type="email" placeholder="Email Anda" :value="editProfile.email"
+              @input="editProfile.email = $event.target.value">
+            </f7-list-input>
+
           </f7-list>
         </f7-block>
       </f7-page>
@@ -172,7 +175,7 @@ export default {
 
       const reader = new FileReader();
       reader.onload = (e) => {
-        this.editProfile.avatar = e.target.result; 
+        this.editProfile.avatar = e.target.result;
       };
       reader.readAsDataURL(file);
     },
@@ -190,11 +193,11 @@ export default {
         const payload = {
           name: this.editProfile.name,
           email: this.editProfile.email,
-          avatar: this.editProfile.avatar 
+          avatar: this.editProfile.avatar
         };
 
         const response = await fetch('https://ngopilosofi-production.up.railway.app/api/profile/updateProfile', {
-          method: 'PUT', 
+          method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
