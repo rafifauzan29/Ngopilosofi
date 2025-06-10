@@ -55,6 +55,11 @@ export default {
     async registerUser() {
       this.error = '';
 
+      if (this.password.length < 8) {
+        f7.dialog.alert('Password harus terdiri dari minimal 8 karakter.', 'Error');
+        return;
+      }
+
       if (this.password !== this.confirmPassword) {
         f7.dialog.alert('Password dan konfirmasi password tidak cocok.', 'Error');
         return;
