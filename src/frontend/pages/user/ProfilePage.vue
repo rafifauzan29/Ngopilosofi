@@ -81,7 +81,7 @@
           <div class="avatar-upload">
             <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*" style="display: none;" />
             <div class="avatar-preview" @click="$refs.fileInput.click()">
-              <img :src="editProfile.avatar" alt="Profile Preview" />
+              <img :src="editProfile.avatar || '../avatar.webp'" alt="Profile Preview" />
               <div class="upload-text">
                 <f7-icon f7="camera_fill"></f7-icon>
                 <p>Ubah Foto</p>
@@ -245,39 +245,51 @@ export default {
       }
     },
     async removeAvatar() {
-      f7.dialog.confirm('Hapus foto profil Anda dan kembali ke default?', 'Konfirmasi', async () => {
-        try {
-          const token = localStorage.getItem('token');
-          if (!token) {
-            f7.dialog.alert('Token tidak ditemukan.');
-            return;
-          }
+      f7.dialog.confirm(
+        'Apakah Anda yakin ingin menghapus foto profil Anda?',
+        'Konfirmasi Penghapusan',
+        async () => {
+          this.loading = true;
 
-          const response = await fetch('https://ngopilosofi-production.up.railway.app/api/profile/remove-avatar', {
-            method: 'PUT',
-            headers: {
-              'Authorization': `Bearer ${token}`
+          try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+              f7.dialog.alert('Token tidak ditemukan, silakan login ulang.');
+              this.loading = false;
+              return;
             }
-          });
 
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Gagal menghapus avatar');
+            const response = await fetch('https://ngopilosofi-production.up.railway.app/api/profile/remove-avatar', {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({}) 
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.message || 'Gagal menghapus avatar');
+            }
+
+            const updatedUser = await response.json();
+
+            localStorage.setItem('user', JSON.stringify(updatedUser.user));
+            localStorage.setItem('userAvatar', '');
+
+            this.userProfile = { ...updatedUser.user };
+            this.editProfile = { ...updatedUser.user };
+
+            f7.dialog.alert('Foto profil berhasil dihapus.');
+          } catch (error) {
+            console.error('Error hapus avatar:', error);
+            f7.dialog.alert(`Error: ${error.message}`);
+          } finally {
+            this.loading = false;
           }
-
-          const data = await response.json();
-
-          this.userProfile.avatar = '';
-          this.editProfile.avatar = '';
-          localStorage.setItem('userAvatar', '');
-          localStorage.setItem('user', JSON.stringify(data.user));
-
-          f7.dialog.alert('Foto profil berhasil dihapus.');
-        } catch (error) {
-          console.error('Error hapus avatar:', error);
-          f7.dialog.alert(`Gagal hapus avatar: ${error.message}`);
         }
-      });
+      );
     },
     logout() {
       f7.dialog.confirm(
