@@ -89,6 +89,10 @@
             </div>
           </div>
 
+          <f7-link class="delete-avatar-link" @click="removeAvatar">
+            Hapus Foto Profil
+          </f7-link>
+
           <f7-list form>
             <f7-list-input label="Nama" type="text" placeholder="Nama Anda" :value="editProfile.name"
               @input="editProfile.name = $event.target.value">
@@ -172,7 +176,7 @@ export default {
       if (!file) return;
 
       const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-      const maxSize = 2 * 1024 * 1024; 
+      const maxSize = 2 * 1024 * 1024;
 
       if (!allowedTypes.includes(file.type)) {
         f7.dialog.alert('Format file tidak didukung. Hanya JPG, PNG, atau WEBP yang diperbolehkan.');
@@ -188,7 +192,7 @@ export default {
 
       const reader = new FileReader();
       reader.onload = (e) => {
-        this.editProfile.avatar = e.target.result; 
+        this.editProfile.avatar = e.target.result;
       };
       reader.readAsDataURL(file);
     },
@@ -239,6 +243,41 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+    async removeAvatar() {
+      f7.dialog.confirm('Hapus foto profil Anda dan kembali ke default?', 'Konfirmasi', async () => {
+        try {
+          const token = localStorage.getItem('token');
+          if (!token) {
+            f7.dialog.alert('Token tidak ditemukan.');
+            return;
+          }
+
+          const response = await fetch('https://ngopilosofi-production.up.railway.app/api/profile/remove-avatar', {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Gagal menghapus avatar');
+          }
+
+          const data = await response.json();
+
+          this.userProfile.avatar = '';
+          this.editProfile.avatar = '';
+          localStorage.setItem('userAvatar', '');
+          localStorage.setItem('user', JSON.stringify(data.user));
+
+          f7.dialog.alert('Foto profil berhasil dihapus.');
+        } catch (error) {
+          console.error('Error hapus avatar:', error);
+          f7.dialog.alert(`Gagal hapus avatar: ${error.message}`);
+        }
+      });
     },
     logout() {
       f7.dialog.confirm(
@@ -444,5 +483,15 @@ export default {
 .profile-edit-popup .upload-text i {
   display: block;
   margin-bottom: 5px;
+}
+
+.delete-avatar-link {
+  display: block;
+  text-align: center;
+  margin-top: 10px;
+  color: #d32f2f;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
 }
 </style>
