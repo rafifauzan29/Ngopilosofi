@@ -171,11 +171,24 @@ export default {
       const file = event.target.files[0];
       if (!file) return;
 
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      const maxSize = 2 * 1024 * 1024; 
+
+      if (!allowedTypes.includes(file.type)) {
+        f7.dialog.alert('Format file tidak didukung. Hanya JPG, PNG, atau WEBP yang diperbolehkan.');
+        return;
+      }
+
+      if (file.size > maxSize) {
+        f7.dialog.alert('Ukuran file terlalu besar. Maksimum 2MB.');
+        return;
+      }
+
       this.selectedFile = file;
 
       const reader = new FileReader();
       reader.onload = (e) => {
-        this.editProfile.avatar = e.target.result;
+        this.editProfile.avatar = e.target.result; 
       };
       reader.readAsDataURL(file);
     },
