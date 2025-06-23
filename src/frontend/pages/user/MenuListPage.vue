@@ -43,6 +43,16 @@
       </div>
     </f7-block>
 
+    <div v-if="cartStore.totalItems > 0" class="floating-order-summary" @click="goToOrderPage">
+      <div class="order-summary-content">
+        <div class="item-count">{{ cartStore.totalItems }} item</div>
+        <div class="total-price">
+          {{ isNaN(cartStore.totalPrice) ? 'Rp0' : formatRupiah(cartStore.totalPrice) }}
+        </div>
+        <div class="view-order">Lihat Pesanan</div>
+      </div>
+    </div>
+
     <f7-popup v-model:opened="popupOpened">
       <f7-page class="page-bg">
         <f7-navbar title="Detail Produk">
@@ -281,6 +291,10 @@ export default {
       }
     };
 
+    const goToOrderPage = () => {
+      f7.views.main.router.navigate('/user/order/');
+    };
+
     const showToast = (message) => {
       f7.toast.create({
         text: message,
@@ -385,7 +399,9 @@ export default {
       toggleAddon,
       addToCart,
       showToast,
-      onPageBeforeIn
+      onPageBeforeIn,
+      goToOrderPage,
+      cartStore
     };
   },
   on: {
@@ -464,6 +480,7 @@ export default {
 
 .menu-container {
   padding: 0 16px 16px;
+  margin-bottom: 80px;
 }
 
 .menu-grid {
@@ -614,5 +631,51 @@ export default {
   --f7-button-text-color: white;
   border-radius: 12px;
   margin-top: 16px;
+}
+
+.floating-order-summary {
+  position: fixed;
+  bottom: 75px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 500px;
+  background-color: #331c2c;
+  color: white;
+  border-radius: 12px;
+  padding: 12px 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.floating-order-summary:active {
+  transform: translateX(-50%) scale(0.98);
+}
+
+.order-summary-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.item-count {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.total-price {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.view-order {
+  background-color: white;
+  color: #331c2c;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
 }
 </style>

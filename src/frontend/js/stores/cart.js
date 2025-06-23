@@ -9,11 +9,17 @@ export const useCartStore = defineStore('cart', () => {
     return items.value.reduce((total, item) => total + item.quantity, 0)
   })
 
-    async function updateCartItem(itemId, quantity, addons = []) {
+  const totalPrice = computed(() => {
+    return items.value.reduce((total, item) => {
+      return total + Number(item.totalPrice || 0);
+    }, 0);
+  });
+
+  async function updateCartItem(itemId, quantity, addons = []) {
     try {
       const token = localStorage.getItem('token')
       if (!token) return false
-      
+
       const response = await fetch(`https://ngopilosofi-production.up.railway.app/api/cart/${itemId}`, {
         method: 'PUT',
         headers: {
@@ -25,15 +31,15 @@ export const useCartStore = defineStore('cart', () => {
           addons: addons.map(a => a._id)
         })
       })
-      
+
       if (!response.ok) throw new Error('Failed to update item')
-      
+
       const data = await response.json()
       items.value = data.items
       count.value = totalItems.value
-      
+
       localStorage.setItem('/user/cart/', JSON.stringify(data.items))
-      
+
       return true
     } catch (error) {
       console.error('Error updating item:', error)
@@ -45,7 +51,7 @@ export const useCartStore = defineStore('cart', () => {
     try {
       const token = localStorage.getItem('token')
       if (!token) return false
-      
+
       const response = await fetch('https://ngopilosofi-production.up.railway.app/api/cart/bulk-delete', {
         method: 'POST',
         headers: {
@@ -54,15 +60,15 @@ export const useCartStore = defineStore('cart', () => {
         },
         body: JSON.stringify({ itemIds })
       })
-      
+
       if (!response.ok) throw new Error('Failed to remove items')
-      
+
       const data = await response.json()
       items.value = data.items
       count.value = totalItems.value
-      
+
       localStorage.setItem('/user/cart/', JSON.stringify(data.items))
-      
+
       return true
     } catch (error) {
       console.error('Error removing items:', error)
@@ -78,19 +84,19 @@ export const useCartStore = defineStore('cart', () => {
         items.value = []
         return
       }
-      
+
       const response = await fetch('https://ngopilosofi-production.up.railway.app/api/cart', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
-      
+
       if (!response.ok) throw new Error('Failed to fetch cart')
-      
+
       const data = await response.json()
       items.value = data.items || []
       count.value = totalItems.value
-      
+
       localStorage.setItem('/user/cart/', JSON.stringify(data.items))
     } catch (error) {
       console.error('Error fetching cart:', error)
@@ -113,7 +119,7 @@ export const useCartStore = defineStore('cart', () => {
         }).open()
         return false
       }
-      
+
       const response = await fetch('https://ngopilosofi-production.up.railway.app/api/cart', {
         method: 'POST',
         headers: {
@@ -126,21 +132,21 @@ export const useCartStore = defineStore('cart', () => {
           addons: addons.map(a => a._id)
         })
       })
-      
+
       if (!response.ok) throw new Error('Failed to add to cart')
-      
+
       const data = await response.json()
       items.value = data.items
       count.value = totalItems.value
 
       localStorage.setItem('/user/cart/', JSON.stringify(data.items))
-      
+
       f7.toast.create({
         text: 'Produk ditambahkan ke keranjang',
         closeTimeout: 3000,
         cssClass: 'success-toast',
       }).open()
-      
+
       return true
     } catch (error) {
       console.error('Error adding to cart:', error)
@@ -157,22 +163,22 @@ export const useCartStore = defineStore('cart', () => {
     try {
       const token = localStorage.getItem('token')
       if (!token) return false
-      
+
       const response = await fetch(`https://ngopilosofi-production.up.railway.app/api/cart/${itemId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
-      
+
       if (!response.ok) throw new Error('Failed to remove item')
-      
+
       const data = await response.json()
       items.value = data.items
       count.value = totalItems.value
 
       localStorage.setItem('/user/cart/', JSON.stringify(data.items))
-      
+
       return true
     } catch (error) {
       console.error('Error removing item:', error)
@@ -186,6 +192,7 @@ export const useCartStore = defineStore('cart', () => {
     count,
     items,
     totalItems,
+    totalPrice,
     fetchCart,
     addToCart,
     removeFromCart,
