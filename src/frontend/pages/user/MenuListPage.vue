@@ -43,7 +43,7 @@
       </div>
     </f7-block>
 
-    <div v-if="cartStore.totalItems > 0" class="floating-order-summary" @click="goToOrderPage">
+    <div v-show="cartStore.totalItems > 0" class="floating-order-summary" @click="goToOrderPage">
       <div class="order-summary-content">
         <div class="item-count">{{ cartStore.totalItems }} item</div>
         <div class="total-price">
