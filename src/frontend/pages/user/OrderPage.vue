@@ -71,9 +71,8 @@
         </div>
       </div>
 
-      <f7-button large fill round class="checkout-btn" @click="checkout" :disabled="selectedItemsCount === 0">
-        <span class="checkout-text">Checkout</span>
-        <span class="checkout-price">{{ formatRupiah(selectedItemsPrice) }}</span>
+      <f7-button large fill round class="checkout-btn" @click="openCheckoutPopup" :disabled="selectedItemsCount === 0">
+        <span class="checkout-text">Checkout {{ formatRupiah(selectedItemsPrice) }}</span>
       </f7-button>
     </f7-block>
 
@@ -123,6 +122,60 @@
         </f7-block>
       </f7-page>
     </f7-popup>
+
+    <f7-popup v-model:opened="checkoutPopupOpened" class="checkout-popup">
+      <f7-page class="checkout-popup-bg">
+        <f7-navbar title="Konfirmasi Pesanan" class="popup-navbar">
+          <f7-nav-right>
+            <f7-link popup-close class="popup-close-btn">Tutup</f7-link>
+          </f7-nav-right>
+        </f7-navbar>
+
+        <f7-block class="checkout-content">
+          <div class="order-summary">
+            <div class="summary-title">Ringkasan Pesanan</div>
+
+            <div class="selected-items-list">
+              <div v-for="(item, index) in selectedItems" :key="index" class="checkout-item">
+                <div class="item-info">
+                  <div class="item-name">{{ item.produk.nama }} × {{ item.jumlah }}</div>
+                  <div class="item-addons" v-if="item.tambahan.length > 0">{{ formatAddons(item.tambahan) }}</div>
+                </div>
+                <div class="item-price">{{ formatRupiah(item.totalHarga) }}</div>
+              </div>
+            </div>
+
+            <div class="checkout-summary">
+              <div class="summary-row">
+                <span>Total Item</span>
+                <span class="summary-value">{{ selectedItemsCount }}</span>
+              </div>
+              <div class="summary-row total-price">
+                <span>Total Harga</span>
+                <span class="summary-value">{{ formatRupiah(selectedItemsPrice) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="payment-methods">
+            <div class="section-title">Metode Pembayaran</div>
+            <div class="payment-options">
+              <div v-for="method in paymentMethods" :key="method.id" class="payment-option"
+                :class="{ 'selected': selectedPaymentMethod === method.id }" @click="selectedPaymentMethod = method.id">
+                <f7-icon :ios="method.icon" :aurora="method.icon" :md="method.icon" size="24"></f7-icon>
+                <span>{{ method.name }}</span>
+                <f7-icon v-if="selectedPaymentMethod === method.id" ios="f7:checkmark_alt" aurora="f7:checkmark_alt"
+                  md="material:check" size="16" class="check-icon"></f7-icon>
+              </div>
+            </div>
+          </div>
+
+          <f7-button large fill round color="primary" @click="confirmCheckout" class="confirm-checkout-btn">
+            Bayar dengan {{ selectedPaymentMethodName }}
+          </f7-button>
+        </f7-block>
+      </f7-page>
+    </f7-popup>
   </f7-page>
 </template>
 
@@ -146,7 +199,16 @@ export default {
       editSelectedAddons: [],
       isLoading: false,
       isSyncing: false,
-      menuItems: []
+      menuItems: [],
+      checkoutPopupOpened: false,
+      isProcessingCheckout: false,
+      paymentMethods: [
+        { id: 1, name: 'Tunai (Cash)', icon: 'f7:money_dollar_circle' },
+        { id: 2, name: 'Transfer Bank', icon: 'f7:building_columns' },
+        { id: 3, name: 'E-Wallet', icon: 'f7:wallet_pass' },
+        { id: 4, name: 'QRIS', icon: 'f7:qrcode' }
+      ],
+      selectedPaymentMethod: null
     };
   },
   computed: {
@@ -168,6 +230,14 @@ export default {
     },
     allSelected() {
       return this.cartItems.length > 0 && this.cartItems.every(item => item.selected);
+    },
+    selectedItems() {
+      return this.cartItems.filter(item => item.selected);
+    },
+    selectedPaymentMethodName() {
+      if (!this.selectedPaymentMethod) return 'Konfirmasi Pesanan';
+      const method = this.paymentMethods.find(m => m.id === this.selectedPaymentMethod);
+      return method ? method.name : 'Konfirmasi Pesanan';
     }
   },
   methods: {
@@ -181,6 +251,10 @@ export default {
     formatAddons(addons) {
       if (!addons || addons.length === 0) return 'Tanpa tambahan';
       return addons.map(a => a.nama).join(', ');
+    },
+    openCheckoutPopup() {
+      if (this.selectedItemsCount === 0) return;
+      this.checkoutPopupOpened = true;
     },
     async refreshCart() {
       if (this.isSyncing) return;
@@ -215,11 +289,11 @@ export default {
         if (!token) {
           const savedCart = localStorage.getItem('/user/cart/');
           this.cartItems = savedCart ? JSON.parse(savedCart) : [];
-          this.cartStore.count = this.totalItems; 
+          this.cartStore.count = this.totalItems;
           return;
         }
 
-        await this.cartStore.fetchCart(); 
+        await this.cartStore.fetchCart();
         this.cartItems = this.cartStore.items.map(item => {
           const menuItem = this.menuItems.find(m => m._id === item.menuItem._id) || item.menuItem;
           return {
@@ -244,7 +318,7 @@ export default {
         console.error('Error loading cart:', error);
         const savedCart = localStorage.getItem('/user/cart/');
         this.cartItems = savedCart ? JSON.parse(savedCart) : [];
-        this.cartStore.count = this.totalItems; 
+        this.cartStore.count = this.totalItems;
 
         if (navigator.onLine) {
           this.showToast('Gagal memuat keranjang');
@@ -333,7 +407,7 @@ export default {
             totalHarga: totalHarga
           };
           this.saveLocalCart();
-          this.cartStore.count = this.totalItems; 
+          this.cartStore.count = this.totalItems;
           return;
         }
 
@@ -365,7 +439,7 @@ export default {
             if (!token) {
               this.cartItems.splice(index, 1);
               this.saveLocalCart();
-              this.cartStore.count = this.totalItems; 
+              this.cartStore.count = this.totalItems;
               this.showToast('Item dihapus dari keranjang');
               return;
             }
@@ -412,10 +486,6 @@ export default {
       });
 
       this.editPopupOpened = true;
-    },
-
-    isAddonSelected(addon) {
-      return this.editSelectedAddons.some(a => a._id === addon._id);
     },
     isAddonSelected(addon) {
       return this.editSelectedAddons.some(a => a._id === addon._id);
@@ -546,22 +616,25 @@ export default {
         this.showToast('Gagal menyimpan perubahan');
       }
     },
-    async checkout() {
-      if (!localStorage.getItem('token')) {
-        this.showAlert('Silakan login terlebih dahulu', 'Checkout Gagal');
-        f7.views.main.router.navigate('/login/');
+    async confirmCheckout() {
+      if (this.isProcessingCheckout) return;
+
+      if (!this.selectedPaymentMethod) {
+        this.showAlert('Silakan pilih metode pembayaran', 'Pembayaran');
         return;
       }
 
-      const selectedItems = this.cartItems.filter(item => item.selected);
-
-      if (selectedItems.length === 0) {
-        this.showAlert('Silakan pilih minimal 1 item untuk checkout', 'Checkout Gagal');
-        return;
-      }
+      this.isProcessingCheckout = true;
 
       try {
         const token = localStorage.getItem('token');
+        if (!token) {
+          this.checkoutPopupOpened = false;
+          this.showAlert('Silakan login terlebih dahulu', 'Checkout Gagal');
+          f7.views.main.router.navigate('/login/');
+          return;
+        }
+
         const response = await fetch('https://ngopilosofi-production.up.railway.app/api/orders', {
           method: 'POST',
           headers: {
@@ -569,12 +642,13 @@ export default {
             'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
-            items: selectedItems.map(item => ({
+            items: this.selectedItems.map(item => ({
               menuItemId: item.produk._id,
               quantity: item.jumlah,
               addons: item.tambahan.map(a => a._id),
               price: item.totalHarga
-            }))
+            })),
+            paymentMethod: this.selectedPaymentMethod
           })
         });
 
@@ -590,18 +664,44 @@ export default {
         const orderData = await response.json();
         localStorage.setItem('/user/checkout/', JSON.stringify({
           orderId: orderData._id,
-          items: selectedItems,
+          items: this.selectedItems,
           totalItems: this.selectedItemsCount,
           totalPrice: this.selectedItemsPrice,
           timestamp: new Date().toISOString()
         }));
 
-        f7.views.main.router.navigate('/user/order-confirmation/');
+        this.checkoutPopupOpened = false;
+        this.showSuccessDialog();
 
       } catch (error) {
         console.error('Checkout error:', error);
         this.showAlert('Gagal melakukan checkout. Silakan coba lagi.', 'Checkout Gagal');
+      } finally {
+        this.isProcessingCheckout = false;
       }
+    },
+    showSuccessDialog() {
+      f7ready(() => {
+        f7.dialog.create({
+          title: 'Pesanan Berhasil',
+          text: `Pesanan Anda telah berhasil dibuat dengan total ${this.formatRupiah(this.selectedItemsPrice)}`,
+          buttons: [
+            {
+              text: 'Lihat Pesanan',
+              onClick: () => {
+                f7.views.main.router.navigate('/user/order-history/');
+              }
+            },
+            {
+              text: 'Kembali ke Menu',
+              onClick: () => {
+                f7.views.main.router.navigate('/user/menu-list/');
+              }
+            }
+          ],
+          verticalButtons: true
+        }).open();
+      });
     },
     showAlert(text, title) {
       f7ready(() => {
@@ -636,7 +736,7 @@ export default {
             if (!token) {
               this.cartItems = this.cartItems.filter(item => !item.selected);
               this.saveLocalCart();
-              this.cartStore.count = this.totalItems; // Update store
+              this.cartStore.count = this.totalItems;
               this.showToast('Item terpilih dihapus (offline)');
               return;
             }
@@ -1035,5 +1135,153 @@ export default {
   --f7-toast-text-color: white;
   --f7-toast-bg-color: #331c2c;
   --f7-toast-border-radius: 8px;
+}
+
+.checkout-popup {
+  --f7-popup-border-radius: 16px 16px 0 0;
+  --f7-popup-tablet-border-radius: 16px;
+}
+
+.checkout-popup-bg {
+  background-color: #ede0d1;
+}
+
+.checkout-content {
+  padding-bottom: 100px;
+}
+
+.order-summary {
+  background-color: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.summary-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #331c2c;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f1f2f6;
+}
+
+.selected-items-list {
+  margin-bottom: 16px;
+}
+
+.checkout-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f2f6;
+}
+
+.checkout-item:last-child {
+  border-bottom: none;
+}
+
+.item-info {
+  flex-grow: 1;
+  margin-right: 12px;
+}
+
+.item-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: #2d3436;
+  margin-bottom: 4px;
+}
+
+.item-addons {
+  font-size: 13px;
+  color: #636e72;
+}
+
+.item-price {
+  font-size: 15px;
+  font-weight: 600;
+  color: #331c2c;
+  min-width: 80px;
+  text-align: right;
+}
+
+.checkout-summary {
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 20px;
+}
+
+.checkout-summary .summary-row {
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.checkout-summary .summary-row.total-price {
+  font-size: 17px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #ddd;
+}
+
+.confirm-checkout-btn {
+  --f7-button-bg-color: #331c2c;
+  --f7-button-text-color: white;
+  --f7-button-height: 48px;
+  --f7-button-font-size: 16px;
+  font-weight: 600;
+  margin-top: 20px;
+  box-shadow: 0 4px 12px rgba(108, 92, 231, 0.3);
+}
+
+.payment-methods {
+  background-color: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3436;
+  margin-bottom: 12px;
+}
+
+.payment-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.payment-option {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+  transition: all 0.2s;
+  cursor: pointer;
+  position: relative;
+}
+
+.payment-option.selected {
+  background-color: #f0e6ff;
+  border: 1px solid #331c2c;
+}
+
+.payment-option span {
+  margin-left: 12px;
+  font-size: 15px;
+  color: #2d3436;
+  flex-grow: 1;
+}
+
+.payment-option .check-icon {
+  color: #331c2c;
+  margin-left: 8px;
 }
 </style>
