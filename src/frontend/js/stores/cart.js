@@ -28,7 +28,7 @@ export const useCartStore = defineStore('cart', () => {
         },
         body: JSON.stringify({
           quantity,
-          addons: addons.map(a => a._id)
+          addons: addons.map(a => a._id)  
         })
       })
 
@@ -74,6 +74,14 @@ export const useCartStore = defineStore('cart', () => {
       console.error('Error removing items:', error)
       return false
     }
+  }
+
+  function getQuantityByMenuId(menuItemId) {
+    const item = items.value.find(i => {
+      const id = typeof i.menuItem === 'object' ? i.menuItem._id : i.menuItem;
+      return id === menuItemId;
+    });
+    return item ? item.quantity : 0;
   }
 
   async function fetchCart() {
@@ -197,6 +205,7 @@ export const useCartStore = defineStore('cart', () => {
     addToCart,
     removeFromCart,
     updateCartItem,
-    bulkRemoveItems
+    bulkRemoveItems,
+    getQuantityByMenuId
   }
 })

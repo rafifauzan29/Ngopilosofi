@@ -36,8 +36,9 @@
             <div class="menu-name">{{ item.nama }}</div>
             <div class="menu-price">{{ formatRupiah(item.harga) }}</div>
           </div>
-          <f7-button small fill class="add-button" @click="openDetail(item)">
-            Tambah
+          <f7-button small fill class="add-button"
+            @click="getCartQuantity(item._id) > 0 ? openVariants(item) : openDetail(item)">
+            {{ getCartQuantity(item._id) > 0 ? `${getCartQuantity(item._id)} item` : 'Tambah' }}
           </f7-button>
         </div>
       </div>
@@ -94,6 +95,53 @@
         </f7-block>
       </f7-page>
     </f7-popup>
+
+    <f7-popup v-model:opened="variantListPopupOpened" class="variant-popup-custom">
+      <f7-page class="variant-popup-page">
+        <f7-navbar title="Variasi Pesanan">
+          <f7-nav-right>
+            <f7-link popup-close>Close</f7-link>
+          </f7-nav-right>
+        </f7-navbar>
+
+        <f7-block class="variant-list-wrapper">
+          <div class="variant-box" v-for="(variant, index) in selectedVariants" :key="index">
+            <div class="product-title">
+              {{ variant.menuItem?.nama || '-' }}
+            </div>
+
+            <div class="variant-details">
+              <div class="addon-list">
+                <div v-for="addon in variant.addons" :key="addon.nama" class="addon-item">
+                  <span class="addon-name">{{ addon.nama }}:</span>
+                  <span class="addon-value">
+                    {{ addon.value !== undefined ? addon.value : (addon.harga !== undefined ? formatRupiah(addon.harga)
+                      :
+                      '-') }}
+                  </span>
+                </div>
+              </div>
+              <div class="price">{{ formatRupiah(variant.totalPrice) }}</div>
+            </div>
+
+            <div class="variant-actions">
+              <f7-button small outline class="edit-btn" @click="editVariant(variant)">
+                <f7-icon f7="pencil" slot="media" class="edit-icon"></f7-icon>
+                Edit
+              </f7-button>
+              <f7-button small outline @click="updateCartItemQty(variant, variant.quantity - 1)">-</f7-button>
+              <div class="qty">{{ variant.quantity }}</div>
+              <f7-button small outline @click="updateCartItemQty(variant, variant.quantity + 1)">+</f7-button>
+            </div>
+          </div>
+
+          <f7-button fill class="tambah-btn" @click="openDetail(selectedItem)">
+            Tambah custom-an lain
+          </f7-button>
+        </f7-block>
+      </f7-page>
+    </f7-popup>
+
   </f7-page>
 </template>
 
@@ -115,20 +163,27 @@ export default {
     const quantity = ref(1);
     const userId = ref(localStorage.getItem('userId') || null);
     const pendingFavorites = ref(JSON.parse(localStorage.getItem('pendingFavorites') || '[]'));
+    const variantListPopupOpened = ref(false);
+    const isAdding = ref(false);
 
     const kategoriList = [
-      'Semua',
-      'Baru',
-      'Paling Laku',
-      'Kopi',
-      'Susu',
-      'Makanan',
-      'Minuman',
-      'Snack',
+      'Semua', 'Baru', 'Paling Laku', 'Kopi', 'Susu', 'Makanan', 'Minuman', 'Snack'
     ];
 
+    const getMenuItemId = (menuItem) =>
+      typeof menuItem === 'object' && menuItem !== null ? menuItem._id : menuItem;
+
     const filteredMenu = computed(() => {
-      return semuaMenu.value.filter((item) => {
+      return semuaMenu.value.map(item => {
+        const qty = cartStore.items
+          .filter(i => getMenuItemId(i.menuItem) === item._id)
+          .reduce((sum, i) => sum + i.quantity, 0);
+
+        return {
+          ...item,
+          cartQty: qty
+        };
+      }).filter(item => {
         const matchKategori =
           selectedKategori.value === 'Semua' ||
           (Array.isArray(item.kategori)
@@ -139,16 +194,116 @@ export default {
       });
     });
 
-    const formatRupiah = (angka) => {
-      return new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0,
-      }).format(angka);
+    const getCartQuantity = (menuItemId) =>
+      cartStore.items.filter(i => getMenuItemId(i.menuItem) === menuItemId)
+        .reduce((sum, i) => sum + i.quantity, 0);
+
+    const selectedVariants = computed(() => {
+      return cartStore.items
+        .filter(i => getMenuItemId(i.menuItem) === selectedItem.value?._id)
+        .map(variant => {
+          const foundMenu = semuaMenu.value.find(m => m._id === getMenuItemId(variant.menuItem));
+
+          const menuAddons = foundMenu?.tambahan || [];
+
+          const rebuiltAddons = (variant.addons || []).map(cartAddon => {
+            const match = menuAddons.find(a => a.nama === cartAddon.nama);
+            return {
+              ...cartAddon,
+              _id: match?._id || null
+            };
+          });
+
+          return {
+            ...variant,
+            menuItem: foundMenu || variant.menuItem,
+            addons: rebuiltAddons,
+            _id: variant._id,
+          };
+        });
+    });
+
+
+    const formatRupiah = angka =>
+      new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+
+    const onSearch = event => {
+      keyword.value = event.target.value;
     };
 
-    const onSearch = (event) => {
-      keyword.value = event.target.value;
+    const openVariants = item => {
+      selectedItem.value = item;
+      variantListPopupOpened.value = true;
+    };
+
+    const editVariant = variant => {
+      selectedItem.value = semuaMenu.value.find(m => m._id === getMenuItemId(variant.menuItem));
+      selectedAddons.value = [...variant.addons];
+      quantity.value = variant.quantity;
+      variantListPopupOpened.value = false;
+      popupOpened.value = true;
+    };
+
+    const updateCartItemQty = async (variant, newQty) => {
+      const itemId = variant._id;
+      if (newQty < 1) {
+        await cartStore.removeFromCart(itemId);
+        return;
+      }
+
+      const addons = Array.isArray(variant.addons)
+        ? variant.addons.map(a => ({ _id: a._id }))
+        : [];
+
+      await cartStore.updateCartItem(itemId, newQty, addons);
+    };
+
+    const openDetail = (item) => {
+      selectedItem.value = item;
+      selectedAddons.value = [];
+      quantity.value = 1;
+      popupOpened.value = true;
+    };
+
+    const increaseQuantity = () => quantity.value++;
+
+    const decreaseQuantity = () => {
+      if (quantity.value > 1) {
+        quantity.value--;
+      } else {
+        const existing = cartStore.items.find(i =>
+          getMenuItemId(i.menuItem) === selectedItem.value?._id &&
+          JSON.stringify(i.addons.map(a => a.nama).sort()) ===
+          JSON.stringify(selectedAddons.value.map(a => a.nama).sort())
+        );
+        if (existing) {
+          cartStore.removeFromCart(existing._id);
+          popupOpened.value = false;
+        }
+      }
+    };
+
+    const isAddonSelected = (addon) =>
+      selectedAddons.value.some(a => a.nama === addon.nama);
+
+    const toggleAddon = (addon) => {
+      const index = selectedAddons.value.findIndex(a => a.nama === addon.nama);
+      if (index === -1) selectedAddons.value.push(addon);
+      else selectedAddons.value.splice(index, 1);
+    };
+
+    const addToCart = async () => {
+      if (isAdding.value) return;
+      isAdding.value = true;
+
+      const success = await cartStore.addToCart(
+        selectedItem.value._id,
+        quantity.value,
+        selectedAddons.value
+      );
+
+      if (success) popupOpened.value = false;
+      isAdding.value = false;
     };
 
     const toggleFavorite = async (item) => {
@@ -171,21 +326,18 @@ export default {
         return;
       }
 
-      semuaMenu.value = semuaMenu.value.map(menu => {
-        if (menu._id === item._id) {
-          return { ...menu, isFavorite: !menu.isFavorite };
-        }
-        return menu;
-      });
+      const wasFavorite = item.isFavorite; 
+      semuaMenu.value = semuaMenu.value.map(menu =>
+        menu._id === item._id ? { ...menu, isFavorite: !wasFavorite } : menu
+      );
 
       if (!navigator.onLine) {
         pendingFavorites.value.push({
           menuId: item._id,
-          action: item.isFavorite ? 'add' : 'remove',
+          action: wasFavorite ? 'remove' : 'add',
           timestamp: new Date().getTime()
         });
         localStorage.setItem('pendingFavorites', JSON.stringify(pendingFavorites.value));
-
         f7.toast.create({
           text: 'Akan disinkronisasi ketika online',
           closeTimeout: 3000,
@@ -195,9 +347,7 @@ export default {
       }
 
       try {
-        item.isFavorite = !item.isFavorite;
-        const action = item.isFavorite ? 'add' : 'remove';
-
+        const action = wasFavorite ? 'remove' : 'add';
         const response = await fetch(`https://ngopilosofi-production.up.railway.app/api/favorite/${item._id}`, {
           method: 'POST',
           headers: {
@@ -220,12 +370,11 @@ export default {
         }
       } catch (error) {
         console.error('Error toggling favorite:', error);
-        semuaMenu.value = semuaMenu.value.map(menu => {
-          if (menu._id === item._id) {
-            return { ...menu, isFavorite: !menu.isFavorite };
-          }
-          return menu;
-        });
+
+        semuaMenu.value = semuaMenu.value.map(menu =>
+          menu._id === item._id ? { ...menu, isFavorite: wasFavorite } : menu
+        );
+
         f7.toast.create({
           text: 'Gagal mengupdate favorit',
           closeTimeout: 3000,
@@ -239,9 +388,7 @@ export default {
         for (const pending of pendingFavorites.value) {
           await fetch(`https://ngopilosofi-production.up.railway.app/api/favorite/${pending.menuId}`, {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
           });
         }
         pendingFavorites.value = [];
@@ -251,58 +398,6 @@ export default {
       }
     };
 
-    const openDetail = (item) => {
-      selectedItem.value = item;
-      selectedAddons.value = [];
-      quantity.value = 1;
-      popupOpened.value = true;
-    };
-
-    const increaseQuantity = () => {
-      quantity.value++;
-    };
-
-    const decreaseQuantity = () => {
-      if (quantity.value > 1) quantity.value--;
-    };
-
-    const isAddonSelected = (addon) => {
-      return selectedAddons.value.some((a) => a.nama === addon.nama);
-    };
-
-    const toggleAddon = (addon) => {
-      const index = selectedAddons.value.findIndex((a) => a.nama === addon.nama);
-      if (index === -1) {
-        selectedAddons.value.push(addon);
-      } else {
-        selectedAddons.value.splice(index, 1);
-      }
-    };
-
-    const addToCart = async () => {
-      const success = await cartStore.addToCart(
-        selectedItem.value._id,
-        quantity.value,
-        selectedAddons.value
-      );
-
-      if (success) {
-        popupOpened.value = false;
-      }
-    };
-
-    const goToOrderPage = () => {
-      f7.views.main.router.navigate('/user/order/');
-    };
-
-    const showToast = (message) => {
-      f7.toast.create({
-        text: message,
-        closeTimeout: 3000,
-        cssClass: 'success-toast',
-      }).open();
-    };
-
     const fetchMenuItems = async () => {
       try {
         const response = await fetch('https://ngopilosofi-production.up.railway.app/api/menu');
@@ -310,11 +405,7 @@ export default {
 
         const data = await response.json();
         semuaMenu.value = data;
-
-        if (userId.value) {
-          await checkFavoritesStatus();
-        }
-
+        if (userId.value) await checkFavoritesStatus();
         localStorage.setItem('/menu/all/', JSON.stringify(semuaMenu.value));
       } catch (error) {
         console.error('Error fetching menu items:', error);
@@ -333,42 +424,29 @@ export default {
     const checkFavoritesStatus = async () => {
       try {
         const response = await fetch('https://ngopilosofi-production.up.railway.app/api/favorite', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
-
         if (!response.ok) throw new Error('Failed to fetch favorites');
-
         const favorites = await response.json();
-        const favoriteIds = favorites.map(fav => fav._id);
+        const favoriteIds = favorites.map(f => f._id);
 
         semuaMenu.value = semuaMenu.value.map(item => ({
           ...item,
           isFavorite: favoriteIds.includes(item._id)
         }));
-
       } catch (error) {
         console.error('Error checking favorites status:', error);
-        const cachedFavorites = localStorage.getItem(`userFavorites_${userId.value}`);
-        if (cachedFavorites) {
-          const favoriteIds = JSON.parse(cachedFavorites).map(fav => fav._id);
-          semuaMenu.value = semuaMenu.value.map(item => ({
-            ...item,
-            isFavorite: favoriteIds.includes(item._id)
-          }));
-        }
       }
     };
 
+    const goToOrderPage = () => f7.views.main.router.navigate('/user/order/');
     const onPageBeforeIn = () => {
       const cachedMenu = localStorage.getItem('/menu/all/');
-      if (cachedMenu) {
-        semuaMenu.value = JSON.parse(cachedMenu);
-      }
+      if (cachedMenu) semuaMenu.value = JSON.parse(cachedMenu);
     };
 
     onMounted(async () => {
+      await cartStore.fetchCart();
       await fetchMenuItems();
       window.addEventListener('online', syncPendingFavorites);
     });
@@ -388,6 +466,7 @@ export default {
       quantity,
       userId,
       pendingFavorites,
+      variantListPopupOpened,
       filteredMenu,
       formatRupiah,
       onSearch,
@@ -398,10 +477,14 @@ export default {
       isAddonSelected,
       toggleAddon,
       addToCart,
-      showToast,
-      onPageBeforeIn,
       goToOrderPage,
-      cartStore
+      updateCartItemQty,
+      cartStore,
+      getCartQuantity,
+      selectedVariants,
+      openVariants,
+      editVariant,
+      onPageBeforeIn,
     };
   },
   on: {
@@ -643,7 +726,7 @@ export default {
   background-color: #331c2c;
   color: white;
   border-radius: 12px;
-  padding: 12px 8px;
+  padding: 8px 2px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   z-index: 1000;
   cursor: pointer;
@@ -661,8 +744,9 @@ export default {
 }
 
 .item-count {
-  font-size: 14px;
+  font-size: 16px;
   opacity: 0.9;
+  padding-left: 10px;
 }
 
 .total-price {
@@ -671,11 +755,124 @@ export default {
 }
 
 .view-order {
-  background-color: white;
-  color: #331c2c;
+  color: #ffffff;
   padding: 6px 12px;
   border-radius: 20px;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 16px;
+}
+
+.variant-box {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid #eaeaea;
+}
+
+.variant-popup-page {
+  background-color: #ede0d1;
+}
+
+.variant-list-wrapper {
+  padding: 16px;
+}
+
+.variant-box {
+  background-color: white;
+  border: 1px solid #d5c3b2;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 6px rgba(51, 28, 44, 0.05);
+}
+
+.product-title {
+  color: #331c2c;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.variant-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+
+.addon-list {
+  font-size: 13px;
+}
+
+.addon-item {
+  margin-bottom: 4px;
+}
+
+.addon-name {
+  color: #5c3a2f;
+  font-weight: 500;
+}
+
+.addon-value {
+  margin-left: 4px;
+  color: #7a5c4c;
+}
+
+.price {
+  color: #331c2c;
+  font-weight: bold;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.variant-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.qty {
+  font-weight: 600;
+  min-width: 28px;
+  text-align: center;
+  color: #331c2c;
+}
+
+.f7-button {
+  --f7-button-border-color: #a37e69;
+  --f7-button-text-color: #331c2c;
+  --f7-button-bg-color: white;
+  --f7-button-hover-bg-color: #f3e9e2;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.tambah-btn {
+  background-color: #331c2c !important;
+  color: white !important;
+  font-weight: 600;
+  border-radius: 12px;
+  font-size: 15px;
+  margin-top: 20px;
+  transition: background-color 0.3s;
+}
+
+.tambah-btn:active {
+  background-color: #22121c !important;
+}
+
+.edit-btn {
+  --f7-button-border-color: #331c2c;
+  --f7-button-text-color: #331c2c;
+  color: #331c2c !important;
+  border-color: #331c2c !important;
+  font-weight: 500;
+}
+
+.edit-icon {
+  color: #331c2c !important;
 }
 </style>
