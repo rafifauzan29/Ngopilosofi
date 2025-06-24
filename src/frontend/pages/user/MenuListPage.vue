@@ -165,6 +165,7 @@ export default {
     const pendingFavorites = ref(JSON.parse(localStorage.getItem('pendingFavorites') || '[]'));
     const variantListPopupOpened = ref(false);
     const isAdding = ref(false);
+    const editingVariantId = ref(null);
 
     const kategoriList = [
       'Semua', 'Baru', 'Paling Laku', 'Kopi', 'Susu', 'Makanan', 'Minuman', 'Snack'
@@ -240,6 +241,7 @@ export default {
       selectedItem.value = semuaMenu.value.find(m => m._id === getMenuItemId(variant.menuItem));
       selectedAddons.value = [...variant.addons];
       quantity.value = variant.quantity;
+      editingVariantId.value = variant._id;
       variantListPopupOpened.value = false;
       popupOpened.value = true;
     };
@@ -262,6 +264,7 @@ export default {
       selectedItem.value = item;
       selectedAddons.value = [];
       quantity.value = 1;
+      editingVariantId.value = null;
       popupOpened.value = true;
     };
 
@@ -296,13 +299,46 @@ export default {
       if (isAdding.value) return;
       isAdding.value = true;
 
-      const success = await cartStore.addToCart(
-        selectedItem.value._id,
-        quantity.value,
-        selectedAddons.value
-      );
+      const normalizedSelectedAddons = selectedAddons.value.map(a => ({ _id: a._id }));
 
-      if (success) popupOpened.value = false;
+      let success = false;
+
+      if (editingVariantId.value) {
+        success = await cartStore.updateCartItem(
+          editingVariantId.value,
+          quantity.value,
+          normalizedSelectedAddons
+        );
+      } else {
+        const existing = cartStore.items.find(i =>
+          getMenuItemId(i.menuItem) === selectedItem.value?._id &&
+          JSON.stringify(
+            (i.addons || []).map(a => a._id).sort()
+          ) === JSON.stringify(
+            normalizedSelectedAddons.map(a => a._id).sort()
+          )
+        );
+
+        if (existing) {
+          success = await cartStore.updateCartItem(
+            existing._id,
+            existing.quantity + quantity.value,
+            normalizedSelectedAddons
+          );
+        } else {
+          success = await cartStore.addToCart(
+            selectedItem.value._id,
+            quantity.value,
+            selectedAddons.value
+          );
+        }
+      }
+
+      if (success) {
+        popupOpened.value = false;
+        editingVariantId.value = null;
+      }
+
       isAdding.value = false;
     };
 
@@ -326,7 +362,7 @@ export default {
         return;
       }
 
-      const wasFavorite = item.isFavorite; 
+      const wasFavorite = item.isFavorite;
       semuaMenu.value = semuaMenu.value.map(menu =>
         menu._id === item._id ? { ...menu, isFavorite: !wasFavorite } : menu
       );

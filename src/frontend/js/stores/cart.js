@@ -28,7 +28,7 @@ export const useCartStore = defineStore('cart', () => {
         },
         body: JSON.stringify({
           quantity,
-          addons: addons.map(a => a._id)  
+          addons: addons.map(a => a._id)
         })
       })
 
