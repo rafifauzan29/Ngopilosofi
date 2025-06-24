@@ -478,17 +478,16 @@ export default {
     },
     editItem(index) {
       this.editingIndex = index;
-      this.editingItem = JSON.parse(JSON.stringify(this.cartItems[index]));
-      this.editQuantity = this.editingItem.jumlah;
-      this.editSelectedAddons = this.editingItem.tambahan.map(addon => {
-        const productAddon = this.editingItem.produk.tambahan.find(a => a._id === addon._id);
-        return productAddon || addon;
-      });
-
+      const originalItem = this.cartItems[index];
+      this.editingItem = JSON.parse(JSON.stringify(originalItem));
+      this.editQuantity = originalItem.jumlah;
+      const allAddons = originalItem.produk.tambahan || [];
+      const selectedNames = (originalItem.tambahan || []).map(a => a.nama);
+      this.editSelectedAddons = allAddons.filter(a => selectedNames.includes(a.nama));
       this.editPopupOpened = true;
     },
     isAddonSelected(addon) {
-      return this.editSelectedAddons.some(a => a._id === addon._id);
+      return this.editSelectedAddons.some(a => a.nama === addon.nama);
     },
     toggleAddon(addon) {
       const index = this.editSelectedAddons.findIndex(a => a._id === addon._id);

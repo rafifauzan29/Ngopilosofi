@@ -250,14 +250,21 @@ export default {
       const itemId = variant._id;
       if (newQty < 1) {
         await cartStore.removeFromCart(itemId);
-        return;
+      } else {
+        const addons = Array.isArray(variant.addons)
+          ? variant.addons.map(a => ({ _id: a._id }))
+          : [];
+
+        await cartStore.updateCartItem(itemId, newQty, addons);
       }
 
-      const addons = Array.isArray(variant.addons)
-        ? variant.addons.map(a => ({ _id: a._id }))
-        : [];
+      const remainingVariants = cartStore.items.filter(i =>
+        getMenuItemId(i.menuItem) === selectedItem.value?._id
+      );
 
-      await cartStore.updateCartItem(itemId, newQty, addons);
+      if (remainingVariants.length === 0) {
+        variantListPopupOpened.value = false;
+      }
     };
 
     const openDetail = (item) => {
