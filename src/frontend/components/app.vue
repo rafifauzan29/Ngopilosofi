@@ -14,11 +14,26 @@
       </f7-navbar>
 
       <f7-toolbar v-if="showToolbar && isAuthenticated" tabbar labels bottom class="toolbar-custom">
-        <f7-link href="/user/home/" icon-f7="house" text="Home" />
-        <f7-link href="/user/favorite/" icon-f7="heart" text="Favorit" />
-        <f7-link href="/user/menu-list/" icon-f7="square_grid_2x2" text="Menu" />
-        <f7-link href="/user/order/" icon-f7="cart" text="Pesanan" />
-        <f7-link href="/user/profile/" icon-f7="person" text="Profil" />
+        <f7-link href="/user/home/" :class="{ 'active-link': currentPath === '/user/home/' }">
+          <i class="f7-icons">house</i>
+          <span class="tabbar-label">Home</span>
+        </f7-link>
+        <f7-link href="/user/favorite/" :class="{ 'active-link': currentPath === '/user/favorite/' }">
+          <i class="f7-icons">heart</i>
+          <span class="tabbar-label">Favorit</span>
+        </f7-link>
+        <f7-link href="/user/menu-list/" :class="{ 'active-link': currentPath === '/user/menu-list/' }">
+          <i class="f7-icons">square_grid_2x2</i>
+          <span class="tabbar-label">Menu</span>
+        </f7-link>
+        <f7-link href="/user/order/" :class="{ 'active-link': currentPath === '/user/order/' }">
+          <i class="f7-icons">cart</i>
+          <span class="tabbar-label">Pesanan</span>
+        </f7-link>
+        <f7-link href="/user/profile/" :class="{ 'active-link': currentPath === '/user/profile/' }">
+          <i class="f7-icons">person</i>
+          <span class="tabbar-label">Profil</span>
+        </f7-link>
       </f7-toolbar>
     </f7-view>
   </f7-app>
@@ -128,7 +143,8 @@ export default {
       cartCount,
       showNavbar,
       showToolbar,
-      isAuthenticated
+      isAuthenticated,
+      currentPath
     }
   }
 }
@@ -166,13 +182,16 @@ export default {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-.toolbar-custom .tabbar-link-icon {
-  font-size: 22px;
+::v-deep(.toolbar-custom .f7-icons),
+::v-deep(.toolbar-custom .tabbar-label) {
+  color: rgba(0, 0, 0, 0.3);
+  transition: color 0.3s ease;
 }
 
-.toolbar-custom .tabbar-link-text {
-  font-size: 12px;
-  margin-top: 4px;
+::v-deep(.toolbar-custom .active-link .f7-icons),
+::v-deep(.toolbar-custom .active-link .tabbar-label) {
+  color: #331c2c !important;
+  font-weight: 600;
 }
 
 .cart-link {
