@@ -1,23 +1,30 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { f7 } from 'framework7-vue'
+import { Preferences } from '@capacitor/preferences'
 
 export const useCartStore = defineStore('cart', () => {
   const count = ref(0)
   const items = ref([])
+
   const totalItems = computed(() => {
     return items.value.reduce((total, item) => total + item.quantity, 0)
   })
 
   const totalPrice = computed(() => {
     return items.value.reduce((total, item) => {
-      return total + Number(item.totalPrice || 0);
-    }, 0);
-  });
+      return total + Number(item.totalPrice || 0)
+    }, 0)
+  })
+
+  async function getToken() {
+    const { value: token } = await Preferences.get({ key: 'token' })
+    return token
+  }
 
   async function updateCartItem(itemId, quantity, addons = []) {
     try {
-      const token = localStorage.getItem('token')
+      const token = await getToken()
       if (!token) return false
 
       const response = await fetch(`https://ngopilosofi-production.up.railway.app/api/cart/${itemId}`, {
@@ -38,7 +45,10 @@ export const useCartStore = defineStore('cart', () => {
       items.value = data.items
       count.value = totalItems.value
 
-      localStorage.setItem('/user/cart/', JSON.stringify(data.items))
+      await Preferences.set({
+        key: '/user/cart/',
+        value: JSON.stringify(data.items)
+      })
 
       return true
     } catch (error) {
@@ -49,7 +59,7 @@ export const useCartStore = defineStore('cart', () => {
 
   async function bulkRemoveItems(itemIds) {
     try {
-      const token = localStorage.getItem('token')
+      const token = await getToken()
       if (!token) return false
 
       const response = await fetch('https://ngopilosofi-production.up.railway.app/api/cart/bulk-delete', {
@@ -67,7 +77,10 @@ export const useCartStore = defineStore('cart', () => {
       items.value = data.items
       count.value = totalItems.value
 
-      localStorage.setItem('/user/cart/', JSON.stringify(data.items))
+      await Preferences.set({
+        key: '/user/cart/',
+        value: JSON.stringify(data.items)
+      })
 
       return true
     } catch (error) {
@@ -78,15 +91,15 @@ export const useCartStore = defineStore('cart', () => {
 
   function getQuantityByMenuId(menuItemId) {
     const item = items.value.find(i => {
-      const id = typeof i.menuItem === 'object' ? i.menuItem._id : i.menuItem;
-      return id === menuItemId;
-    });
-    return item ? item.quantity : 0;
+      const id = typeof i.menuItem === 'object' ? i.menuItem._id : i.menuItem
+      return id === menuItemId
+    })
+    return item ? item.quantity : 0
   }
 
   async function fetchCart() {
     try {
-      const token = localStorage.getItem('token')
+      const token = await getToken()
       if (!token) {
         count.value = 0
         items.value = []
@@ -105,10 +118,14 @@ export const useCartStore = defineStore('cart', () => {
       items.value = data.items || []
       count.value = totalItems.value
 
-      localStorage.setItem('/user/cart/', JSON.stringify(data.items))
+      await Preferences.set({
+        key: '/user/cart/',
+        value: JSON.stringify(data.items)
+      })
     } catch (error) {
       console.error('Error fetching cart:', error)
-      const cachedCart = localStorage.getItem('/user/cart/')
+
+      const { value: cachedCart } = await Preferences.get({ key: '/user/cart/' })
       if (cachedCart) {
         items.value = JSON.parse(cachedCart)
         count.value = totalItems.value
@@ -118,7 +135,7 @@ export const useCartStore = defineStore('cart', () => {
 
   async function addToCart(menuItemId, quantity, addons = []) {
     try {
-      const token = localStorage.getItem('token')
+      const token = await getToken()
       if (!token) {
         f7.toast.create({
           text: 'Silakan login terlebih dahulu',
@@ -147,7 +164,10 @@ export const useCartStore = defineStore('cart', () => {
       items.value = data.items
       count.value = totalItems.value
 
-      localStorage.setItem('/user/cart/', JSON.stringify(data.items))
+      await Preferences.set({
+        key: '/user/cart/',
+        value: JSON.stringify(data.items)
+      })
 
       f7.toast.create({
         text: 'Produk ditambahkan ke keranjang',
@@ -169,7 +189,7 @@ export const useCartStore = defineStore('cart', () => {
 
   async function removeFromCart(itemId) {
     try {
-      const token = localStorage.getItem('token')
+      const token = await getToken()
       if (!token) return false
 
       const response = await fetch(`https://ngopilosofi-production.up.railway.app/api/cart/${itemId}`, {
@@ -185,7 +205,10 @@ export const useCartStore = defineStore('cart', () => {
       items.value = data.items
       count.value = totalItems.value
 
-      localStorage.setItem('/user/cart/', JSON.stringify(data.items))
+      await Preferences.set({
+        key: '/user/cart/',
+        value: JSON.stringify(data.items)
+      })
 
       return true
     } catch (error) {

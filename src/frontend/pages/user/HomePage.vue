@@ -28,12 +28,7 @@
     <f7-block>
       <h2 class="section-title">Kategori Populer</h2>
       <div class="kategori-grid">
-        <div
-          v-for="kategori in kategoriPopuler"
-          :key="kategori"
-          class="kategori-card"
-          @click="goToKategori(kategori)"
-        >
+        <div v-for="kategori in kategoriPopuler" :key="kategori" class="kategori-card" @click="goToKategori(kategori)">
           <f7-icon ios="f7:star_fill" md="material:star" color="#331c2c" size="large" />
           <div class="kategori-name">{{ kategori }}</div>
         </div>
@@ -43,12 +38,7 @@
     <f7-block>
       <h2 class="section-title">Menu Terbaru</h2>
       <div class="menu-favorite-grid">
-        <div
-          v-for="item in terbaruItems"
-          :key="item.id"
-          class="menu-favorite-card"
-          @click="openDetail(item)"
-        >
+        <div v-for="item in terbaruItems" :key="item.id" class="menu-favorite-card" @click="openDetail(item)">
           <img :src="formatImagePath(item.gambar)" alt="Menu Image" />
           <div class="menu-fav-name">{{ item.nama }}</div>
           <div class="menu-fav-price">{{ formatRupiah(item.harga) }}</div>
@@ -62,6 +52,8 @@
 </template>
 
 <script>
+import { Preferences } from '@capacitor/preferences'
+
 export default {
   name: 'HomePage',
   data() {
@@ -69,18 +61,18 @@ export default {
       kategoriPopuler: ['Kopi', 'Susu', 'Makanan', 'Snack', 'Minuman'],
       semuaMenu: [],
       userPoint: 0,
-      firstName: '', 
-    };
+      firstName: '',
+    }
   },
   computed: {
     terbaruItems() {
-      if (!this.semuaMenu || this.semuaMenu.length === 0) return [];
+      if (!this.semuaMenu || this.semuaMenu.length === 0) return []
       return this.semuaMenu.filter((item) => {
         if (Array.isArray(item.kategori)) {
-          return item.kategori.includes('Baru');
+          return item.kategori.includes('Baru')
         }
-        return item.kategori === 'Baru';
-      });
+        return item.kategori === 'Baru'
+      })
     },
   },
   methods: {
@@ -89,41 +81,53 @@ export default {
         style: 'currency',
         currency: 'IDR',
         minimumFractionDigits: 0,
-      }).format(angka);
+      }).format(angka)
     },
     goToKategori(kategori) {
-      this.$f7router.navigate('/menu-list', { query: { kategori } });
+      this.$f7router.navigate('/menu-list', { query: { kategori } })
     },
     openDetail(item) {
       this.$f7router.navigate('/detail-produk', {
         props: { produk: item },
-      });
+      })
     },
     formatImagePath(path) {
       if (path && !path.startsWith('/')) {
-        return '/' + path;
+        return '/' + path
       }
-      return path;
+      return path
     },
-  },
-  mounted() {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      this.$f7router.navigate('/login/');
-      return;
+    async loadUserData() {
+      const { value: token } = await Preferences.get({ key: 'token' })
+      if (!token) {
+        this.$f7router.navigate('/login/')
+        return
+      }
+
+      const { value: storedMenuRaw } = await Preferences.get({ key: '/menu/all/' })
+      try {
+        this.semuaMenu = storedMenuRaw ? JSON.parse(storedMenuRaw) : []
+      } catch {
+        this.semuaMenu = []
+      }
+
+      const { value: userRaw } = await Preferences.get({ key: 'user' })
+      try {
+        const user = userRaw ? JSON.parse(userRaw) : null
+        this.userPoint = user && user.point ? user.point : 0
+        if (user && user.name) {
+          this.firstName = user.name.split(' ')[0]
+        }
+      } catch {
+        this.userPoint = 0
+        this.firstName = ''
+      }
     }
-
-    const storedMenu = JSON.parse(localStorage.getItem('/menu/all/') || '[]');
-    this.semuaMenu = storedMenu;
-
-    const user = JSON.parse(localStorage.getItem('user'));
-    this.userPoint = user && user.point ? user.point : 0;
-
-    if (user && user.name) {
-      this.firstName = user.name.split(' ')[0];
-    }
   },
-};
+  async mounted() {
+    await this.loadUserData()
+  }
+}
 </script>
 
 <style scoped>

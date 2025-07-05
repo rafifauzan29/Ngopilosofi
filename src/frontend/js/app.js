@@ -6,25 +6,31 @@ import 'framework7/css/bundle'
 import '../css/icons.css'
 import App from '../components/app.vue'
 import axios from 'axios'
+import { Preferences } from '@capacitor/preferences'
 
 const pinia = createPinia()
 
-axios.defaults.baseURL = 'http://ngopilosofi-production.up.railway.app/api'
-axios.interceptors.request.use(config => {
-  const token = localStorage.getItem('token')
+const axiosInstance = axios.create({
+  baseURL: 'https://ngopilosofi-production.up.railway.app/api',
+})
+
+axiosInstance.interceptors.request.use(async config => {
+  const { value: token } = await Preferences.get({ key: 'token' })
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
   return config
-}, error => {
-  return Promise.reject(error)
-})
+}, error => Promise.reject(error))
 
-axios.interceptors.response.use(response => response, error => {
+axiosInstance.interceptors.response.use(response => response, async error => {
   if (error.response && error.response.status === 401) {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    f7.views.main.router.navigate('/login/')
+    await Preferences.remove({ key: 'token' })
+    await Preferences.remove({ key: 'user' })
+    try {
+      f7.views.main.router.navigate('/login/')
+    } catch (e) {
+      window.location.href = '/login/'
+    }
   }
   return Promise.reject(error)
 })
@@ -39,10 +45,17 @@ const framework7Params = {
   },
   router: {
     animate: true,
-    beforeEnter: async (routeTo, routeFrom, resolve, reject) => {
-      const protectedRoutes = ['/user/home/', '/user/favorite/', '/user/menu-list/', '/user/order/', '/user/profile/']
+    beforeEnter: async (routeTo, routeFrom, resolve) => {
+      const protectedRoutes = [
+        '/user/home/',
+        '/user/favorite/',
+        '/user/menu-list/',
+        '/user/order/',
+        '/user/profile/',
+      ]
+
+      const { value: token } = await Preferences.get({ key: 'token' })
       const authRequired = protectedRoutes.includes(routeTo.url)
-      const token = localStorage.getItem('token')
 
       if (authRequired && !token) {
         resolve({ url: '/login/' })
@@ -59,15 +72,31 @@ const framework7Params = {
   }
 }
 
-Framework7.use(Framework7Vue, framework7Params)
+const initApp = async () => {
+  Framework7.use(Framework7Vue, framework7Params)
 
-const app = createApp(App)
+  const app = createApp(App)
+  app.use(pinia)
 
-app.use(pinia)
+  app.config.globalProperties.$axios = axiosInstance
+  app.config.globalProperties.$f7 = f7
 
-app.config.globalProperties.$axios = axios
-app.config.globalProperties.$f7 = f7
+  registerComponents(app)
+  app.mount('#app')
 
-registerComponents(app)
+  const { value: token } = await Preferences.get({ key: 'token' })
 
-app.mount('#app')
+  if (token) {
+    f7.views.main.router.navigate('/user/home/', {
+      reloadCurrent: true,
+      ignoreCache: true,
+    })
+  } else {
+    f7.views.main.router.navigate('/', {
+      reloadCurrent: true,
+      ignoreCache: true,
+    })
+  }
+}
+
+initApp()

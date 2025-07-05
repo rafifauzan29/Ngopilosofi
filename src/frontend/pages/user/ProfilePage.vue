@@ -8,7 +8,7 @@
 
     <div class="user-profile-section">
       <div class="avatar-container" @click="openProfileEdit">
-        <img :src="userProfile.avatar || '../avatar.webp'" alt="Profile Picture" class="avatar" />
+        <img :src="userProfile.avatar || 'images/avatar/default.png'" class="avatar" />
         <div class="edit-overlay">
           <f7-icon f7="camera_fill" size="24px" color="white"></f7-icon>
         </div>
@@ -81,7 +81,7 @@
           <div class="avatar-upload">
             <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*" style="display: none;" />
             <div class="avatar-preview" @click="$refs.fileInput.click()">
-              <img :src="editProfile.avatar || '../avatar.webp'" alt="Profile Preview" />
+              <img :src="editProfile.avatar || 'images/avatar/default.png'"/>
               <div class="upload-text">
                 <f7-icon f7="camera_fill"></f7-icon>
                 <p>Ubah Foto</p>
@@ -110,6 +110,7 @@
 
 <script>
 import { f7 } from 'framework7-vue';
+import { Preferences } from '@capacitor/preferences';
 
 export default {
   name: 'ProfilePage',
@@ -135,14 +136,10 @@ export default {
   computed: {
     popupTitle() {
       switch (this.popupContent) {
-        case 'cs':
-          return 'Customer Service';
-        case 'about':
-          return 'Tentang Kami';
-        case 'privacy':
-          return 'Kebijakan Privasi';
-        default:
-          return 'Info';
+        case 'cs': return 'Customer Service';
+        case 'about': return 'Tentang Kami';
+        case 'privacy': return 'Kebijakan Privasi';
+        default: return 'Info';
       }
     },
   },
@@ -150,16 +147,18 @@ export default {
     this.loadUserProfile();
   },
   methods: {
-    loadUserProfile() {
-      const user = JSON.parse(localStorage.getItem('user'));
+    async loadUserProfile() {
+      const { value: userStr } = await Preferences.get({ key: 'user' });
+      const { value: avatar } = await Preferences.get({ key: 'userAvatar' });
+      const user = userStr ? JSON.parse(userStr) : null;
       if (!user || !user.name || !user.email) {
-        f7router.navigate('/login/');
+        f7.views.main.router.navigate('/login/');
         return;
       }
       this.userProfile = {
         name: user.name,
         email: user.email,
-        avatar: user.avatar || localStorage.getItem('userAvatar') || ''
+        avatar: user.avatar || avatar || ''
       };
       this.editProfile = { ...this.userProfile };
     },
@@ -174,46 +173,38 @@ export default {
     handleFileUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
-
       const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
       const maxSize = 2 * 1024 * 1024;
-
       if (!allowedTypes.includes(file.type)) {
-        f7.dialog.alert('Format file tidak didukung. Hanya JPG, PNG, atau WEBP yang diperbolehkan.');
+        f7.dialog.alert('Format file tidak didukung. Hanya JPG, PNG, atau WEBP.');
         return;
       }
-
       if (file.size > maxSize) {
         f7.dialog.alert('Ukuran file terlalu besar. Maksimum 2MB.');
         return;
       }
-
       this.selectedFile = file;
-
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = e => {
         this.editProfile.avatar = e.target.result;
       };
       reader.readAsDataURL(file);
     },
     async saveProfile() {
       this.loading = true;
-
       try {
-        const token = localStorage.getItem('token');
+        const { value: token } = await Preferences.get({ key: 'token' });
         if (!token) {
           f7.dialog.alert('Token tidak ditemukan, silakan login ulang.');
           this.loading = false;
           return;
         }
-
         const payload = {
           name: this.editProfile.name,
           email: this.editProfile.email,
           avatar: this.editProfile.avatar
         };
-
-        const response = await fetch('https://ngopilosofi-production.up.railway.app/api/profile/updateProfile', {
+        const res = await fetch('https://ngopilosofi-production.up.railway.app/api/profile/updateProfile', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -221,93 +212,66 @@ export default {
           },
           body: JSON.stringify(payload)
         });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Gagal update profil');
-        }
-
-        const updatedUser = await response.json();
-
-        localStorage.setItem('user', JSON.stringify(updatedUser.user));
-        localStorage.setItem('userAvatar', updatedUser.user.avatar || '');
-
-        this.userProfile = { ...updatedUser.user };
-        this.editProfile = { ...updatedUser.user };
+        if (!res.ok) throw new Error((await res.json()).message || 'Gagal update profil');
+        const updated = await res.json();
+        await Preferences.set({ key: 'user', value: JSON.stringify(updated.user) });
+        await Preferences.set({ key: 'userAvatar', value: updated.user.avatar || '' });
+        this.userProfile = { ...updated.user };
+        this.editProfile = { ...updated.user };
         this.profileEditOpen = false;
-
         f7.dialog.alert('Profil berhasil diperbarui!');
-      } catch (error) {
-        console.error('Error update profil:', error);
-        f7.dialog.alert(`Error: ${error.message}`);
+      } catch (e) {
+        console.error('Error:', e);
+        f7.dialog.alert(`Error: ${e.message}`);
       } finally {
         this.loading = false;
       }
     },
     async removeAvatar() {
-      f7.dialog.confirm(
-        'Apakah Anda yakin ingin menghapus foto profil Anda?',
-        'Konfirmasi Penghapusan',
-        async () => {
-          this.loading = true;
-
-          try {
-            const token = localStorage.getItem('token');
-            if (!token) {
-              f7.dialog.alert('Token tidak ditemukan, silakan login ulang.');
-              this.loading = false;
-              return;
-            }
-
-            const response = await fetch('https://ngopilosofi-production.up.railway.app/api/profile/remove-avatar', {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({}) 
-            });
-
-            if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(errorData.message || 'Gagal menghapus avatar');
-            }
-
-            const updatedUser = await response.json();
-
-            localStorage.setItem('user', JSON.stringify(updatedUser.user));
-            localStorage.setItem('userAvatar', '');
-
-            this.userProfile = { ...updatedUser.user };
-            this.editProfile = { ...updatedUser.user };
-
-            f7.dialog.alert('Foto profil berhasil dihapus.');
-          } catch (error) {
-            console.error('Error hapus avatar:', error);
-            f7.dialog.alert(`Error: ${error.message}`);
-          } finally {
+      f7.dialog.confirm('Apakah Anda yakin ingin menghapus foto profil?', 'Konfirmasi Penghapusan', async () => {
+        this.loading = true;
+        try {
+          const { value: token } = await Preferences.get({ key: 'token' });
+          if (!token) {
+            f7.dialog.alert('Token tidak ditemukan, silakan login ulang.');
             this.loading = false;
+            return;
           }
-        }
-      );
-    },
-    logout() {
-      f7.dialog.confirm(
-        'Apakah Anda yakin ingin logout?',
-        'Konfirmasi Logout',
-        () => {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          localStorage.removeItem('userAvatar');
-
-          f7.dialog.alert('Anda telah logout.', () => {
-            f7.views.main.router.navigate('/login/', {
-              reloadCurrent: true,
-              clearPreviousHistory: true
-            });
+          const res = await fetch('https://ngopilosofi-production.up.railway.app/api/profile/remove-avatar', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({})
           });
+          if (!res.ok) throw new Error((await res.json()).message || 'Gagal hapus avatar');
+          const updated = await res.json();
+          await Preferences.set({ key: 'user', value: JSON.stringify(updated.user) });
+          await Preferences.set({ key: 'userAvatar', value: '' });
+          this.userProfile = { ...updated.user };
+          this.editProfile = { ...updated.user };
+          f7.dialog.alert('Foto profil berhasil dihapus.');
+        } catch (e) {
+          console.error('Error:', e);
+          f7.dialog.alert(`Error: ${e.message}`);
+        } finally {
+          this.loading = false;
         }
-      );
+      });
+    },
+    async logout() {
+      f7.dialog.confirm('Apakah Anda yakin ingin logout?', 'Konfirmasi Logout', async () => {
+        await Preferences.remove({ key: 'token' });
+        await Preferences.remove({ key: 'user' });
+        await Preferences.remove({ key: 'userAvatar' });
+        f7.dialog.alert('Anda telah logout.', () => {
+          f7.views.main.router.navigate('/login/', {
+            reloadCurrent: true,
+            clearPreviousHistory: true
+          });
+        });
+      });
     },
   },
 };

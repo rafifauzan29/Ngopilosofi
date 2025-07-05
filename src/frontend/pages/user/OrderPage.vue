@@ -182,6 +182,7 @@
 <script>
 import { f7, f7ready } from 'framework7-vue';
 import { useCartStore } from '../../js/stores/cart';
+import { Preferences } from '@capacitor/preferences';
 
 export default {
   name: 'OrderPage',
@@ -275,19 +276,19 @@ export default {
         const response = await fetch('https://ngopilosofi-production.up.railway.app/api/menu');
         if (!response.ok) throw new Error('Failed to fetch menu');
         this.menuItems = await response.json();
-        localStorage.setItem('menuItems', JSON.stringify(this.menuItems));
+        await Preferences.set({ key: 'menuItems', value: JSON.stringify(this.menuItems) });
       } catch (error) {
         console.error('Error loading menu:', error);
-        const savedMenu = localStorage.getItem('menuItems');
+        const { value: savedMenu } = await Preferences.get({ key: 'menuItems' });
         this.menuItems = savedMenu ? JSON.parse(savedMenu) : [];
       }
     },
     async loadCart() {
       this.isLoading = true;
       try {
-        const token = localStorage.getItem('token');
+        const { value: token } = await Preferences.get({ key: 'token' });
         if (!token) {
-          const savedCart = localStorage.getItem('/user/cart/');
+          const { value: savedCart } = await Preferences.get({ key: '/user/cart/' });
           this.cartItems = savedCart ? JSON.parse(savedCart) : [];
           this.cartStore.count = this.totalItems;
           return;
@@ -312,11 +313,11 @@ export default {
           };
         });
 
-        localStorage.setItem('/user/cart/', JSON.stringify(this.cartItems));
+        await Preferences.set({ key: '/user/cart/', value: JSON.stringify(this.cartItems) });
 
       } catch (error) {
         console.error('Error loading cart:', error);
-        const savedCart = localStorage.getItem('/user/cart/');
+        const { value: savedCart } = await Preferences.get({ key: '/user/cart/' });
         this.cartItems = savedCart ? JSON.parse(savedCart) : [];
         this.cartStore.count = this.totalItems;
 
@@ -350,7 +351,7 @@ export default {
           return;
         }
 
-        const token = localStorage.getItem('token');
+        const { value: token } = await Preferences.get({ key: 'token' });
         const totalAddonPrice = addons.reduce((sum, addon) => sum + addon.harga, 0);
         const totalHarga = (menuItem.harga + totalAddonPrice) * quantity;
 
@@ -364,7 +365,7 @@ export default {
             selected: true
           };
           this.cartItems.push(newItem);
-          this.saveLocalCart();
+          await this.saveLocalCart();
           this.showToast('Item ditambahkan ke keranjang (offline)');
           return;
         }
@@ -395,7 +396,7 @@ export default {
     async updateCartItemQuantity(index, newQuantity) {
       try {
         const item = this.cartItems[index];
-        const token = localStorage.getItem('token');
+        const { value: token } = await Preferences.get({ key: 'token' });
 
         if (!token) {
           const totalAddonPrice = item.tambahan.reduce((sum, addon) => sum + addon.harga, 0);
@@ -406,7 +407,7 @@ export default {
             jumlah: newQuantity,
             totalHarga: totalHarga
           };
-          this.saveLocalCart();
+          await this.saveLocalCart();
           this.cartStore.count = this.totalItems;
           return;
         }
@@ -434,11 +435,11 @@ export default {
         'Hapus Item',
         async () => {
           try {
-            const token = localStorage.getItem('token');
+            const { value: token } = await Preferences.get({ key: 'token' });
 
             if (!token) {
               this.cartItems.splice(index, 1);
-              this.saveLocalCart();
+              await this.saveLocalCart();
               this.cartStore.count = this.totalItems;
               this.showToast('Item dihapus dari keranjang');
               return;
@@ -457,8 +458,8 @@ export default {
         }
       );
     },
-    saveLocalCart() {
-      localStorage.setItem('/user/cart/', JSON.stringify(this.cartItems));
+    async saveLocalCart() {
+      await Preferences.set({ key: '/user/cart/', value: JSON.stringify(this.cartItems) });
       this.$emit('cartUpdated', this.cartItems.length);
     },
     showConfirmDialog(text, title, callback) {
@@ -535,7 +536,7 @@ export default {
           return;
         }
 
-        const token = localStorage.getItem('token');
+        const { value: token } = await Preferences.get({ key: 'token' });
 
         if (duplicateIndex !== -1) {
           const duplicateItem = this.cartItems[duplicateIndex];
@@ -551,7 +552,7 @@ export default {
               totalHarga: totalHargaBaru
             };
             this.cartItems.splice(this.editingIndex, 1);
-            this.saveLocalCart();
+            await this.saveLocalCart();
             this.showToast('Item digabung (offline)');
             this.editPopupOpened = false;
             return;
@@ -587,7 +588,7 @@ export default {
               totalHarga
             };
             this.cartItems.splice(this.editingIndex, 1, updatedItem);
-            this.saveLocalCart();
+            await this.saveLocalCart();
             this.showToast('Item diperbarui (offline)');
             this.editPopupOpened = false;
             return;
@@ -626,7 +627,7 @@ export default {
       this.isProcessingCheckout = true;
 
       try {
-        const token = localStorage.getItem('token');
+        const { value: token } = await Preferences.get({ key: 'token' });
         if (!token) {
           this.checkoutPopupOpened = false;
           this.showAlert('Silakan login terlebih dahulu', 'Checkout Gagal');
@@ -661,13 +662,16 @@ export default {
         });
 
         const orderData = await response.json();
-        localStorage.setItem('/user/checkout/', JSON.stringify({
-          orderId: orderData._id,
-          items: this.selectedItems,
-          totalItems: this.selectedItemsCount,
-          totalPrice: this.selectedItemsPrice,
-          timestamp: new Date().toISOString()
-        }));
+        await Preferences.set({ 
+          key: '/user/checkout/', 
+          value: JSON.stringify({
+            orderId: orderData._id,
+            items: this.selectedItems,
+            totalItems: this.selectedItemsCount,
+            totalPrice: this.selectedItemsPrice,
+            timestamp: new Date().toISOString()
+          })
+        });
 
         this.checkoutPopupOpened = false;
         this.showSuccessDialog();
@@ -730,11 +734,11 @@ export default {
         'Hapus Item Terpilih',
         async () => {
           try {
-            const token = localStorage.getItem('token');
+            const { value: token } = await Preferences.get({ key: 'token' });
 
             if (!token) {
               this.cartItems = this.cartItems.filter(item => !item.selected);
-              this.saveLocalCart();
+              await this.saveLocalCart();
               this.cartStore.count = this.totalItems;
               this.showToast('Item terpilih dihapus (offline)');
               return;

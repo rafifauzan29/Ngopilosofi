@@ -30,6 +30,7 @@ import { f7, f7ready } from 'framework7-vue'
 import { getDevice } from 'framework7/lite-bundle'
 import routes from '../js/routes'
 import { useCartStore } from '../js/stores/cart'
+import { Preferences } from '@capacitor/preferences'
 
 export default {
   setup() {
@@ -41,18 +42,12 @@ export default {
     const hideNavbarRoutes = ['/login/', '/register/', '/']
     const hideToolbarRoutes = ['/login/', '/register/', '/']
 
-    const showNavbar = computed(() => {
-      return !hideNavbarRoutes.includes(currentPath.value)
-    })
-
-    const showToolbar = computed(() => {
-      return isAuthenticated.value && !hideToolbarRoutes.includes(currentPath.value)
-    })
-
+    const showNavbar = computed(() => !hideNavbarRoutes.includes(currentPath.value))
+    const showToolbar = computed(() => isAuthenticated.value && !hideToolbarRoutes.includes(currentPath.value))
     const cartCount = computed(() => cartStore.count)
 
-    const checkAuth = () => {
-      const token = localStorage.getItem('token')
+    const checkAuth = async () => {
+      const { value: token } = await Preferences.get({ key: 'token' })
       isAuthenticated.value = !!token
       if (token) {
         cartStore.fetchCart()
@@ -66,31 +61,23 @@ export default {
       checkAuth()
     }
 
-    const handleStorageEvent = (event) => {
-      if (event.key === 'token') {
-        checkAuth()
-      }
-    }
-
     onMounted(() => {
       f7ready(() => {
         currentPath.value = f7.views.main.router.url
         f7.on('routeChange', handleRouteChange)
         checkAuth()
-        window.addEventListener('storage', handleStorageEvent)
       })
     })
 
     onUnmounted(() => {
-      window.removeEventListener('storage', handleStorageEvent)
       f7.off('routeChange', handleRouteChange)
     })
 
     const f7params = {
       name: 'Ngopilosofi',
       theme: 'auto',
-      routes,
       id: 'com.ngopilosofi.app',
+      routes,
       input: {
         scrollIntoViewOnFocus: device.cordova,
         scrollIntoViewCentered: device.cordova,
@@ -98,6 +85,7 @@ export default {
       statusbar: {
         iosOverlaysWebView: true,
         androidOverlaysWebView: true,
+        androidBackgroundColor: '#331c2c'
       },
       colors: {
         primary: '#331c2c',
@@ -106,18 +94,19 @@ export default {
         browserHistory: true,
         iosDynamicNavbar: false,
         material: true,
-        xhrCache: false
-      },
-      statusbar: {
-        iosOverlaysWebView: true,
-        androidOverlaysWebView: true,
-        androidBackgroundColor: '#331c2c'
+        xhrCache: false,
       },
       router: {
         beforeEnter: async (routeTo, routeFrom, resolve, reject) => {
-          const protectedRoutes = ['/user/home/', '/user/favorite/', '/user/menu-list/', '/user/order/', '/user/profile/']
+          const protectedRoutes = [
+            '/user/home/',
+            '/user/favorite/',
+            '/user/menu-list/',
+            '/user/order/',
+            '/user/profile/',
+          ]
           const authRequired = protectedRoutes.includes(routeTo.url)
-          const token = localStorage.getItem('token')
+          const { value: token } = await Preferences.get({ key: 'token' })
 
           if (authRequired && !token) {
             resolve({ url: '/login/' })
@@ -141,7 +130,7 @@ export default {
       showToolbar,
       isAuthenticated
     }
-  },
+  }
 }
 </script>
 

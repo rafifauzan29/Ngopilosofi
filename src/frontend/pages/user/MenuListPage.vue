@@ -149,6 +149,7 @@
 import { f7 } from 'framework7-vue';
 import { useCartStore } from '../../js/stores/cart';
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { Preferences } from '@capacitor/preferences';
 
 export default {
   name: 'MenuListPage',
@@ -161,11 +162,24 @@ export default {
     const selectedItem = ref(null);
     const selectedAddons = ref([]);
     const quantity = ref(1);
-    const userId = ref(localStorage.getItem('userId') || null);
-    const pendingFavorites = ref(JSON.parse(localStorage.getItem('pendingFavorites') || '[]'));
+    const userId = ref(null);
+    const pendingFavorites = ref([]);
     const variantListPopupOpened = ref(false);
     const isAdding = ref(false);
     const editingVariantId = ref(null);
+
+    const loadPreferences = async () => {
+      try {
+        const { value: userRaw } = await Preferences.get({ key: 'user' });
+        const user = userRaw ? JSON.parse(userRaw) : null;
+        userId.value = user?._id || user?.id || null;
+
+        const { value: storedPendingFavorites } = await Preferences.get({ key: 'pendingFavorites' });
+        pendingFavorites.value = storedPendingFavorites ? JSON.parse(storedPendingFavorites) : [];
+      } catch (error) {
+        console.error('Error loading preferences:', error);
+      }
+    };
 
     const kategoriList = [
       'Semua', 'Baru', 'Paling Laku', 'Kopi', 'Susu', 'Makanan', 'Minuman', 'Snack'
@@ -223,7 +237,6 @@ export default {
           };
         });
     });
-
 
     const formatRupiah = angka =>
       new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
@@ -359,7 +372,7 @@ export default {
         return;
       }
 
-      const token = localStorage.getItem('token');
+      const { value: token } = await Preferences.get({ key: 'token' });
       if (!token) {
         f7.toast.create({
           text: 'Token tidak ditemukan, silakan login ulang',
@@ -380,7 +393,12 @@ export default {
           action: wasFavorite ? 'remove' : 'add',
           timestamp: new Date().getTime()
         });
-        localStorage.setItem('pendingFavorites', JSON.stringify(pendingFavorites.value));
+
+        await Preferences.set({
+          key: 'pendingFavorites',
+          value: JSON.stringify(pendingFavorites.value)
+        });
+
         f7.toast.create({
           text: 'Akan disinkronisasi ketika online',
           closeTimeout: 3000,
@@ -428,46 +446,27 @@ export default {
 
     const syncPendingFavorites = async () => {
       try {
+        const { value: token } = await Preferences.get({ key: 'token' });
+
         for (const pending of pendingFavorites.value) {
           await fetch(`https://ngopilosofi-production.up.railway.app/api/favorite/${pending.menuId}`, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            headers: { 'Authorization': `Bearer ${token}` }
           });
         }
+
         pendingFavorites.value = [];
-        localStorage.removeItem('pendingFavorites');
+        await Preferences.remove({ key: 'pendingFavorites' });
       } catch (error) {
         console.error('Error syncing pending favorites:', error);
       }
     };
 
-    const fetchMenuItems = async () => {
-      try {
-        const response = await fetch('https://ngopilosofi-production.up.railway.app/api/menu');
-        if (!response.ok) throw new Error('Failed to fetch menu items');
-
-        const data = await response.json();
-        semuaMenu.value = data;
-        if (userId.value) await checkFavoritesStatus();
-        localStorage.setItem('/menu/all/', JSON.stringify(semuaMenu.value));
-      } catch (error) {
-        console.error('Error fetching menu items:', error);
-        const cachedMenu = localStorage.getItem('/menu/all/');
-        if (cachedMenu) {
-          semuaMenu.value = JSON.parse(cachedMenu);
-          f7.toast.create({
-            text: 'Menggunakan data offline',
-            closeTimeout: 3000,
-            cssClass: 'warning-toast',
-          }).open();
-        }
-      }
-    };
-
     const checkFavoritesStatus = async () => {
       try {
+        const { value: token } = await Preferences.get({ key: 'token' });
         const response = await fetch('https://ngopilosofi-production.up.railway.app/api/favorite', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!response.ok) throw new Error('Failed to fetch favorites');
         const favorites = await response.json();
@@ -482,13 +481,44 @@ export default {
       }
     };
 
+    const fetchMenuItems = async () => {
+      try {
+        const response = await fetch('https://ngopilosofi-production.up.railway.app/api/menu');
+        if (!response.ok) throw new Error('Failed to fetch menu items');
+
+        const data = await response.json();
+        semuaMenu.value = data;
+
+        if (userId.value) await checkFavoritesStatus();
+
+        await Preferences.set({
+          key: '/menu/all/',
+          value: JSON.stringify(semuaMenu.value)
+        });
+      } catch (error) {
+        console.error('Error fetching menu items:', error);
+
+        const { value: cachedMenu } = await Preferences.get({ key: '/menu/all/' });
+        if (cachedMenu) {
+          semuaMenu.value = JSON.parse(cachedMenu);
+          f7.toast.create({
+            text: 'Menggunakan data offline',
+            closeTimeout: 3000,
+            cssClass: 'warning-toast',
+          }).open();
+        }
+      }
+    };
+
     const goToOrderPage = () => f7.views.main.router.navigate('/user/order/');
-    const onPageBeforeIn = () => {
-      const cachedMenu = localStorage.getItem('/menu/all/');
+
+    const onPageBeforeIn = async () => {
+      const { value: cachedMenu } = await Preferences.get({ key: '/menu/all/' });
       if (cachedMenu) semuaMenu.value = JSON.parse(cachedMenu);
     };
 
     onMounted(async () => {
+      await loadPreferences();
       await cartStore.fetchCart();
       await fetchMenuItems();
       window.addEventListener('online', syncPendingFavorites);

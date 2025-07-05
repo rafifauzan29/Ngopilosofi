@@ -73,7 +73,8 @@
 <script>
 import { f7 } from 'framework7-vue';
 import { useCartStore } from '../../js/stores/cart';
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { Preferences } from '@capacitor/preferences';
 
 export default {
   name: 'FavoritePage',
@@ -84,8 +85,8 @@ export default {
     const selectedItem = ref(null);
     const selectedAddons = ref([]);
     const quantity = ref(1);
-    const userId = ref(localStorage.getItem('userId') || null);
-    const pendingFavorites = ref(JSON.parse(localStorage.getItem('pendingFavorites') || '[]'));
+    const userId = ref(null);
+    const pendingFavorites = ref([]);
 
     const formatRupiah = (angka) => {
       return new Intl.NumberFormat('id-ID', {
@@ -95,7 +96,29 @@ export default {
       }).format(angka);
     };
 
+    const loadUserData = async () => {
+      const { value: userRaw } = await Preferences.get({ key: 'user' });
+      console.log('[DEBUG] userRaw:', userRaw);
+
+      try {
+        const user = userRaw ? JSON.parse(userRaw) : null;
+        console.log('[DEBUG] Parsed user:', user);
+
+        // Kompatibel dengan ._id (MongoDB) dan .id (JSON API)
+        userId.value = user?._id || user?.id || null;
+        console.log('[DEBUG] userId.value:', userId.value);
+      } catch (e) {
+        console.error('[ERROR] Gagal parsing user dari Preferences:', e);
+        userId.value = null;
+      }
+
+      const { value: pendingFavs } = await Preferences.get({ key: 'pendingFavorites' });
+      pendingFavorites.value = pendingFavs ? JSON.parse(pendingFavs) : [];
+    };
+
     const fetchFavoriteItems = async () => {
+      await loadUserData();
+
       if (!userId.value) {
         f7.toast.create({
           text: 'Silakan login terlebih dahulu',
@@ -106,22 +129,30 @@ export default {
       }
 
       try {
+        const { value: token } = await Preferences.get({ key: 'token' });
+
         const response = await fetch('https://ngopilosofi-production.up.railway.app/api/favorite', {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${token}`
           }
         });
-        
+
         if (!response.ok) throw new Error('Failed to fetch favorites');
-        
+
         favoriteItems.value = await response.json();
 
-        localStorage.setItem(`userFavorites_${userId.value}`, JSON.stringify(favoriteItems.value));
-        
+        await Preferences.set({
+          key: `userFavorites_${userId.value}`,
+          value: JSON.stringify(favoriteItems.value)
+        });
+
       } catch (error) {
         console.error('Error fetching favorites:', error);
 
-        const cachedFavorites = localStorage.getItem(`userFavorites_${userId.value}`);
+        const { value: cachedFavorites } = await Preferences.get({
+          key: `userFavorites_${userId.value}`
+        });
+
         if (cachedFavorites) {
           favoriteItems.value = JSON.parse(cachedFavorites);
           f7.toast.create({
@@ -134,6 +165,8 @@ export default {
     };
 
     const toggleFavorite = async (item) => {
+      await loadUserData();
+
       if (!userId.value) {
         f7.toast.create({
           text: 'Silakan login terlebih dahulu',
@@ -143,7 +176,7 @@ export default {
         return;
       }
 
-      const token = localStorage.getItem('token');
+      const { value: token } = await Preferences.get({ key: 'token' });
       if (!token) {
         f7.toast.create({
           text: 'Token tidak ditemukan, silakan login ulang',
@@ -154,15 +187,20 @@ export default {
       }
 
       if (!navigator.onLine) {
-        pendingFavorites.value.push({
+        const newPending = {
           menuId: item._id,
           action: 'remove',
           timestamp: new Date().getTime()
+        };
+
+        pendingFavorites.value.push(newPending);
+        await Preferences.set({
+          key: 'pendingFavorites',
+          value: JSON.stringify(pendingFavorites.value)
         });
-        localStorage.setItem('pendingFavorites', JSON.stringify(pendingFavorites.value));
-      
+
         favoriteItems.value = favoriteItems.value.filter(i => i._id !== item._id);
-        
+
         f7.toast.create({
           text: 'Akan disinkronisasi ketika online',
           closeTimeout: 3000,
@@ -182,7 +220,12 @@ export default {
         if (!response.ok) throw new Error('Failed to remove favorite');
 
         favoriteItems.value = favoriteItems.value.filter(i => i._id !== item._id);
-        
+
+        await Preferences.set({
+          key: `userFavorites_${userId.value}`,
+          value: JSON.stringify(favoriteItems.value)
+        });
+
         f7.toast.create({
           text: 'Dihapus dari favorit',
           closeTimeout: 3000,
@@ -204,7 +247,7 @@ export default {
 
     const syncPendingFavorites = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const { value: token } = await Preferences.get({ key: 'token' });
         if (!token) return;
 
         for (const pending of pendingFavorites.value) {
@@ -217,7 +260,7 @@ export default {
         }
 
         pendingFavorites.value = [];
-        localStorage.removeItem('pendingFavorites');
+        await Preferences.remove({ key: 'pendingFavorites' });
 
         await fetchFavoriteItems();
       } catch (error) {

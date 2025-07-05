@@ -17,9 +17,7 @@
           required />
       </div>
       <div class="login-actions">
-        <button type="submit" class="button button-fill login-button">
-          Login
-        </button>
+        <button type="submit" class="button button-fill login-button">Login</button>
 
         <p class="register-text">
           Belum punya akun?
@@ -31,7 +29,8 @@
 </template>
 
 <script>
-import { f7 } from 'framework7-vue';
+import { f7 } from 'framework7-vue'
+import { Preferences } from '@capacitor/preferences'
 
 export default {
   name: 'LoginPage',
@@ -40,11 +39,11 @@ export default {
       email: '',
       password: '',
       error: ''
-    };
+    }
   },
   methods: {
     async handleLogin() {
-      this.error = '';
+      this.error = ''
 
       try {
         const response = await fetch('https://ngopilosofi-production.up.railway.app/api/auth/login', {
@@ -54,41 +53,40 @@ export default {
             email: this.email,
             password: this.password
           }),
-        });
+        })
 
-        const data = await response.json();
+        const data = await response.json()
 
         if (!response.ok) {
           if (response.status === 401) {
-            f7.dialog.alert('Email atau kata sandi salah.', 'Login Gagal');
+            f7.dialog.alert('Email atau kata sandi salah.', 'Login Gagal')
           } else {
-            f7.dialog.alert(data.message || 'Login gagal.', 'Login Gagal');
+            f7.dialog.alert(data.message || 'Login gagal.', 'Login Gagal')
           }
-          return;
+          return
         }
 
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        localStorage.setItem('userId', data.user._id);
+        await Preferences.set({ key: 'token', value: data.token })
+        await Preferences.set({ key: 'user', value: JSON.stringify(data.user) })
+        await Preferences.set({ key: 'userId', value: data.user._id })
 
         f7.dialog.alert('Login berhasil! Selamat datang.', 'Sukses', () => {
-          f7.views.main.router.navigate('/user/home/');
-        });
+          f7.views.main.router.navigate('/user/home/')
+        })
 
       } catch (err) {
-        this.error = 'Terjadi kesalahan saat login.';
-        console.error(err);
+        this.error = 'Terjadi kesalahan saat login.'
+        console.error(err)
       }
     }
   },
-  mounted() {
-    const token = localStorage.getItem('token');
+  async mounted() {
+    const { value: token } = await Preferences.get({ key: 'token' })
     if (token) {
-      f7.views.main.router.navigate('/user/home/');
+      f7.views.main.router.navigate('/user/home/')
     }
   }
-};
-
+}
 </script>
 
 <style scoped>
