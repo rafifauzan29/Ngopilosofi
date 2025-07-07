@@ -9,6 +9,7 @@ import OrderPage from '../pages/user/OrderPage.vue';
 import FavoritePage from '../pages/user/FavoritePage.vue';
 import ProfilePage from '../pages/user/ProfilePage.vue';
 import PointPage from '../pages/user/PointPage.vue';
+import HistoryPage from '../pages/user/OrderHistoryPage.vue';
 
 import LoginPage from '../pages/auth/LoginPage.vue';
 import RegisterPage from '../pages/auth/RegisterPage.vue';
@@ -61,6 +62,10 @@ var routes = [
   {
     path: '/user/point/',
     component: PointPage,
+  },
+  {
+    path: '/user/order-history/',
+    component: HistoryPage,
   },
 ];
 

@@ -169,9 +169,11 @@
               </div>
             </div>
           </div>
-
-          <f7-button large fill round color="primary" @click="confirmCheckout" class="confirm-checkout-btn">
-            Bayar dengan {{ selectedPaymentMethodName }}
+          <f7-button large fill round color="primary" class="confirm-checkout-btn" :disabled="!selectedPaymentMethod"
+            @click="confirmCheckout">
+            {{ selectedPaymentMethodName
+              ? 'Bayar dengan ' + selectedPaymentMethodName
+              : 'Silakan memilih metode pembayaran' }}
           </f7-button>
         </f7-block>
       </f7-page>
@@ -236,9 +238,9 @@ export default {
       return this.cartItems.filter(item => item.selected);
     },
     selectedPaymentMethodName() {
-      if (!this.selectedPaymentMethod) return 'Konfirmasi Pesanan';
+      if (!this.selectedPaymentMethod) return null;
       const method = this.paymentMethods.find(m => m.id === this.selectedPaymentMethod);
-      return method ? method.name : 'Konfirmasi Pesanan';
+      return method ? method.name : null;
     }
   },
   methods: {
@@ -635,6 +637,18 @@ export default {
           return;
         }
 
+        // Prepare order items data
+        const orderItems = this.selectedItems.map(item => ({
+          menuItemId: item.produk._id,
+          quantity: item.jumlah,
+          addons: item.tambahan.map(a => a._id),
+          price: item.totalHarga
+        }));
+
+        // Get payment method name
+        const paymentMethod = this.paymentMethods.find(m => m.id === this.selectedPaymentMethod)?.name || 'Unknown';
+
+        // Create new order
         const response = await fetch('https://ngopilosofi-production.up.railway.app/api/orders', {
           method: 'POST',
           headers: {
@@ -642,46 +656,183 @@ export default {
             'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
-            items: this.selectedItems.map(item => ({
-              menuItemId: item.produk._id,
-              quantity: item.jumlah,
-              addons: item.tambahan.map(a => a._id),
-              price: item.totalHarga
-            })),
-            paymentMethod: this.selectedPaymentMethod
+            items: orderItems,
+            paymentMethod: paymentMethod
           })
         });
 
-        if (!response.ok) throw new Error('Checkout failed');
-
-        await fetch('https://ngopilosofi-production.up.railway.app/api/cart', {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
+        if (!response.ok) {
+          let errorMessage = 'Checkout failed';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch (e) {
+            console.error('Error parsing error response:', e);
           }
-        });
+          throw new Error(errorMessage);
+        }
 
-        const orderData = await response.json();
-        await Preferences.set({ 
-          key: '/user/checkout/', 
-          value: JSON.stringify({
-            orderId: orderData._id,
-            items: this.selectedItems,
-            totalItems: this.selectedItemsCount,
-            totalPrice: this.selectedItemsPrice,
-            timestamp: new Date().toISOString()
-          })
-        });
+        // Parse the successful response
+        let orderData;
+        try {
+          orderData = await response.json();
+        } catch (e) {
+          console.error('Error parsing order response:', e);
+          throw new Error('Invalid response from server');
+        }
 
+        // Clear cart after successful checkout
+        try {
+          await fetch('https://ngopilosofi-production.up.railway.app/api/cart', {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+        } catch (e) {
+          console.error('Error clearing cart:', e);
+          // Continue even if cart clearing fails
+        }
+
+        // Save order data locally
+        await this.saveOrderLocally(orderData);
+
+        // Update UI state
         this.checkoutPopupOpened = false;
-        this.showSuccessDialog();
+        this.showSuccessDialog(orderData);
+
+        // Refresh cart data
+        await this.loadCart();
 
       } catch (error) {
         console.error('Checkout error:', error);
-        this.showAlert('Gagal melakukan checkout. Silakan coba lagi.', 'Checkout Gagal');
+        this.showAlert(
+          error.message || 'Gagal melakukan checkout. Silakan coba lagi.',
+          'Checkout Gagal'
+        );
       } finally {
         this.isProcessingCheckout = false;
       }
+    },
+
+    async saveOrderLocally(orderData) {
+      try {
+        // Get existing orders from local storage
+        const { value: existingOrders } = await Preferences.get({ key: '/user/order-history/' });
+        const orders = existingOrders ? JSON.parse(existingOrders) : [];
+
+        // Format order data for local storage
+        const formattedOrder = {
+          _id: orderData._id,
+          orderNumber: orderData._id.substring(0, 8).toUpperCase(),
+          items: this.selectedItems.map(item => ({
+            menuItem: {
+              _id: item.produk._id,
+              name: item.produk.nama,
+              price: item.produk.harga
+            },
+            addons: item.tambahan,
+            quantity: item.jumlah,
+            price: item.totalHarga
+          })),
+          totalItems: this.selectedItemsCount,
+          totalPrice: this.selectedItemsPrice,
+          paymentMethod: this.paymentMethods.find(m => m.id === this.selectedPaymentMethod)?.name || 'Unknown',
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+          reviewed: false
+        };
+
+        // Add new order to beginning of array
+        orders.unshift(formattedOrder);
+
+        // Save updated orders to local storage
+        await Preferences.set({
+          key: '/user/order-history/',
+          value: JSON.stringify(orders)
+        });
+
+      } catch (error) {
+        console.error('Error saving order locally:', error);
+      }
+    },
+
+    showSuccessDialog(orderData) {
+      f7ready(() => {
+        f7.dialog.create({
+          title: 'Pesanan Berhasil',
+          text: `Pesanan #${orderData._id.substring(0, 8).toUpperCase()} telah berhasil dibuat dengan total ${this.formatRupiah(this.selectedItemsPrice)}`,
+          buttons: [
+            {
+              text: 'Lihat Pesanan',
+              onClick: () => {
+                f7.views.main.router.navigate(`/user/order-detail/${orderData._id}`);
+              }
+            },
+            {
+              text: 'Kembali ke Menu',
+              onClick: () => {
+                f7.views.main.router.navigate('/user/menu-list/');
+              }
+            }
+          ],
+          verticalButtons: true,
+          on: {
+            closed: () => {
+              // Clear selected items after checkout
+              this.cartItems.forEach(item => {
+                item.selected = false;
+              });
+              this.saveLocalCart();
+            }
+          }
+        }).open();
+      });
+    },
+
+    showAlert(text, title) {
+      f7ready(() => {
+        f7.dialog.alert(text, title);
+      });
+    },
+
+    showSuccessDialog(orderData) {
+      f7ready(() => {
+        f7.dialog.create({
+          title: 'Pesanan Berhasil',
+          text: `Pesanan #${orderData._id.substring(0, 8).toUpperCase()} telah berhasil dibuat dengan total ${this.formatRupiah(this.selectedItemsPrice)}`,
+          buttons: [
+            {
+              text: 'Lihat Pesanan',
+              onClick: () => {
+                f7.views.main.router.navigate(`/user/order-detail/${orderData._id}`);
+              }
+            },
+            {
+              text: 'Kembali ke Menu',
+              onClick: () => {
+                f7.views.main.router.navigate('/user/menu-list/');
+              }
+            }
+          ],
+          verticalButtons: true,
+          on: {
+            closed: () => {
+              // Clear selected items after checkout
+              this.cartItems.forEach(item => {
+                item.selected = false;
+              });
+              this.saveLocalCart();
+            }
+          }
+        }).open();
+      });
+    },
+
+    showAlert(text, title) {
+      f7ready(() => {
+        f7.dialog.alert(text, title);
+      });
     },
     showSuccessDialog() {
       f7ready(() => {

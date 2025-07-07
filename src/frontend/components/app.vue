@@ -26,9 +26,9 @@
           <i class="f7-icons">square_grid_2x2</i>
           <span class="tabbar-label">Menu</span>
         </f7-link>
-        <f7-link href="/user/order/" :class="{ 'active-link': currentPath === '/user/order/' }">
-          <i class="f7-icons">cart</i>
-          <span class="tabbar-label">Pesanan</span>
+        <f7-link href="/user/order-history/" :class="{ 'active-link': currentPath === '/user/order-history/' }">
+          <i class="f7-icons">doc_text</i>
+          <span class="tabbar-label">Riwayat</span>
         </f7-link>
         <f7-link href="/user/profile/" :class="{ 'active-link': currentPath === '/user/profile/' }">
           <i class="f7-icons">person</i>
@@ -117,7 +117,7 @@ export default {
             '/user/home/',
             '/user/favorite/',
             '/user/menu-list/',
-            '/user/order/',
+            '/user/order-history/',
             '/user/profile/',
           ]
           const authRequired = protectedRoutes.includes(routeTo.url)
@@ -171,7 +171,7 @@ export default {
   font-size: 12px;
   color: #331c2c;
   font-style: italic;
-  margin-top: -4px;
+  margin-top: 4px;
 }
 
 .toolbar-custom {
