@@ -1,73 +1,76 @@
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
+const MenuItem = require('../models/MenuItem');
+const { sendOrderConfirmationEmail } = require('../services/emailService');
 
-// Membuat order baru dari cart
+// Create a new order
 const createOrder = async (req, res) => {
   try {
-    const { paymentMethod, notes } = req.body;
-
-    // Dapatkan cart user
+    const { paymentMethod, deliveryAddress, notes } = req.body;
+    
+    // Get user's cart
     const cart = await Cart.findOne({ user: req.user.id }).populate('items.menuItem');
+    
     if (!cart || cart.items.length === 0) {
-      return res.status(400).json({ message: 'Keranjang belanja kosong' });
+      return res.status(400).json({ message: 'Cart is empty' });
     }
 
-    // Hitung total harga
-    const totalPrice = cart.items.reduce((sum, item) => sum + item.totalPrice, 0);
-
-    // Siapkan items untuk order
+    // Prepare order items
     const orderItems = cart.items.map(item => ({
       menuItem: item.menuItem._id,
+      name: item.menuItem.nama,
+      price: item.menuItem.harga,
       quantity: item.quantity,
-      price: item.totalPrice,
       addons: item.addons,
-      specialRequest: item.specialRequest || ''
+      totalPrice: item.totalPrice
     }));
 
-    // Buat order baru (langsung selesai dan dibayar untuk demo)
+    // Calculate total amount
+    const totalAmount = cart.items.reduce((sum, item) => sum + item.totalPrice, 0);
+
+    // Create the order
     const order = new Order({
       user: req.user.id,
       items: orderItems,
-      totalPrice,
+      totalAmount,
       paymentMethod,
-      notes: notes || '',
-      status: 'completed',         // langsung selesai
-      paymentStatus: 'paid'        // langsung dianggap dibayar
+      status: 'pending',
+      deliveryAddress: deliveryAddress || '',
+      notes: notes || ''
     });
 
-    // Simpan order
     await order.save();
+    
+    // Clear the cart
+    cart.items = [];
+    await cart.save();
 
-    // Kosongkan cart
-    await Cart.findOneAndUpdate(
-      { user: req.user.id },
-      { $set: { items: [] } }
-    );
+    // Send confirmation email
+    await sendOrderConfirmationEmail(req.user, order);
 
     res.status(201).json(order);
-
   } catch (err) {
     console.error('Error creating order:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Mendapatkan semua order user
-const getUserOrders = async (req, res) => {
+// Get all orders for a user
+const getOrders = async (req, res) => {
   try {
     const orders = await Order.find({ user: req.user.id })
-      .sort({ createdAt: -1 })
+      .sort({ orderDate: -1 })
       .populate('items.menuItem');
-
+    
     res.json(orders);
   } catch (err) {
-    console.error('Error getting user orders:', err);
+    console.error('Error getting orders:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Mendapatkan detail order
-const getOrderDetail = async (req, res) => {
+// Get a specific order
+const getOrderById = async (req, res) => {
   try {
     const order = await Order.findOne({
       _id: req.params.id,
@@ -75,113 +78,24 @@ const getOrderDetail = async (req, res) => {
     }).populate('items.menuItem');
 
     if (!order) {
-      return res.status(404).json({ message: 'Order tidak ditemukan' });
+      return res.status(404).json({ message: 'Order not found' });
     }
 
     res.json(order);
   } catch (err) {
-    console.error('Error getting order details:', err);
+    console.error('Error getting order:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Membatalkan order
-const cancelOrder = async (req, res) => {
-  try {
-    const order = await Order.findOne({
-      _id: req.params.id,
-      user: req.user.id
-    });
-
-    if (!order) {
-      return res.status(404).json({ message: 'Order tidak ditemukan' });
-    }
-
-    if (order.status !== 'pending') {
-      return res.status(400).json({ 
-        message: 'Order tidak bisa dibatalkan karena sudah diproses' 
-      });
-    }
-
-    order.status = 'cancelled';
-    await order.save();
-
-    res.json(order);
-  } catch (err) {
-    console.error('Error cancelling order:', err);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-// Menambahkan ulasan ke order
-const addReview = async (req, res) => {
-  try {
-    const { rating, comment } = req.body;
-
-    const order = await Order.findOne({
-      _id: req.params.id,
-      user: req.user.id
-    });
-
-    if (!order) {
-      return res.status(404).json({ message: 'Order tidak ditemukan' });
-    }
-
-    if (order.status !== 'completed') {
-      return res.status(400).json({ 
-        message: 'Hanya bisa memberikan ulasan untuk order yang sudah selesai' 
-      });
-    }
-
-    if (order.review) {
-      return res.status(400).json({ 
-        message: 'Order ini sudah memiliki ulasan' 
-      });
-    }
-
-    order.review = {
-      rating,
-      comment,
-      createdAt: new Date()
-    };
-
-    await order.save();
-
-    res.json(order);
-  } catch (err) {
-    console.error('Error adding review:', err);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-// Admin: Mendapatkan semua order
-const getAllOrders = async (req, res) => {
-  try {
-    const { status } = req.query;
-    const filter = {};
-
-    if (status) filter.status = status;
-
-    const orders = await Order.find(filter)
-      .sort({ createdAt: -1 })
-      .populate('user', 'name email')
-      .populate('items.menuItem');
-
-    res.json(orders);
-  } catch (err) {
-    console.error('Error getting all orders:', err);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
-// Admin: Update status order
+// Update order status (admin only)
 const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
-
+    
     const order = await Order.findById(req.params.id);
     if (!order) {
-      return res.status(404).json({ message: 'Order tidak ditemukan' });
+      return res.status(404).json({ message: 'Order not found' });
     }
 
     order.status = status;
@@ -194,12 +108,37 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
+// Cancel an order
+const cancelOrder = async (req, res) => {
+  try {
+    const order = await Order.findOne({
+      _id: req.params.id,
+      user: req.user.id
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Only allow cancellation if order is still pending
+    if (order.status !== 'pending') {
+      return res.status(400).json({ message: 'Order can only be cancelled when pending' });
+    }
+
+    order.status = 'cancelled';
+    await order.save();
+
+    res.json(order);
+  } catch (err) {
+    console.error('Error cancelling order:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   createOrder,
-  getUserOrders,
-  getOrderDetail,
-  cancelOrder,
-  addReview,
-  getAllOrders,
-  updateOrderStatus
+  getOrders,
+  getOrderById,
+  updateOrderStatus,
+  cancelOrder
 };

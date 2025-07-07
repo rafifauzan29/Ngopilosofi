@@ -6,20 +6,26 @@ const orderItemSchema = new mongoose.Schema({
     ref: 'MenuItem',
     required: true
   },
-  quantity: {
-    type: Number,
-    required: true,
-    min: 1
+  name: {
+    type: String,
+    required: true
   },
   price: {
     type: Number,
     required: true
   },
+  quantity: {
+    type: Number,
+    required: true
+  },
   addons: [{
-    nama: String,
-    harga: Number
+    name: String,
+    price: Number
   }],
-  specialRequest: String
+  totalPrice: {
+    type: Number,
+    required: true
+  }
 });
 
 const orderSchema = new mongoose.Schema({
@@ -29,60 +35,31 @@ const orderSchema = new mongoose.Schema({
     required: true
   },
   items: [orderItemSchema],
-  totalPrice: {
+  totalAmount: {
     type: Number,
+    required: true
+  },
+  paymentMethod: {
+    type: String,
     required: true
   },
   status: {
     type: String,
-    enum: ['pending', 'processing', 'completed', 'cancelled', 'rejected'],
+    enum: ['pending', 'processing', 'completed', 'cancelled'],
     default: 'pending'
   },
-  paymentMethod: {
-    type: String,
-    required: true,
-    enum: ['cash', 'transfer', 'ewallet', 'qris']
-  },
-  paymentStatus: {
-    type: String,
-    enum: ['pending', 'paid', 'failed', 'refunded'],
-    default: 'pending'
-  },
-  notes: String,
-  review: {
-    rating: {
-      type: Number,
-      min: 1,
-      max: 5
-    },
-    comment: String,
-    createdAt: Date
-  },
-  createdAt: {
+  orderDate: {
     type: Date,
     default: Date.now
   },
-  updatedAt: {
-    type: Date,
-    default: Date.now
+  deliveryAddress: {
+    type: String,
+    required: false
+  },
+  notes: {
+    type: String,
+    required: false
   }
-});
-
-orderSchema.index({ user: 1, status: 1 });
-orderSchema.index({ createdAt: -1 });
-
-orderSchema.pre('save', function (next) {
-  this.updatedAt = new Date();
-  next();
-});
-
-orderSchema.statics.findByUser = function (userId) {
-  return this.find({ user: userId }).sort({ createdAt: -1 });
-};
-
-orderSchema.methods.updateStatus = function (newStatus) {
-  this.status = newStatus;
-  return this.save();
-};
+}, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);

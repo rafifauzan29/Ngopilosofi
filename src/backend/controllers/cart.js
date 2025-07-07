@@ -4,7 +4,7 @@ const MenuItem = require('../models/MenuItem');
 const getCart = async (req, res) => {
   try {
     const cart = await Cart.findOne({ user: req.user.id })
-      .populate('items.menuItem'); 
+      .populate('items.menuItem');
 
     if (!cart) {
       return res.status(200).json({ items: [] });
@@ -65,7 +65,7 @@ const addToCart = async (req, res) => {
       cart.items.push({
         menuItem: menuItemId,
         quantity,
-        addons: addonsDetail, 
+        addons: addonsDetail,
         totalPrice,
       });
     }
@@ -118,7 +118,7 @@ const updateCartItem = async (req, res) => {
     const totalPrice = (menuItem.harga + totalAddonPrice) * quantity;
 
     cart.items[itemIndex].quantity = quantity;
-    cart.items[itemIndex].addons = addonsDetail; 
+    cart.items[itemIndex].addons = addonsDetail;
     cart.items[itemIndex].totalPrice = totalPrice;
 
     await cart.save();
@@ -189,6 +189,54 @@ const removeCartItem = async (req, res) => {
   }
 };
 
+// Add this to your existing cartController.js
+const checkout = async (req, res) => {
+  try {
+    const { paymentMethod, deliveryAddress, notes } = req.body;
+
+    const cart = await Cart.findOne({ user: req.user.id }).populate('items.menuItem');
+
+    if (!cart || cart.items.length === 0) {
+      return res.status(400).json({ message: 'Cart is empty' });
+    }
+
+    // Prepare order items
+    const orderItems = cart.items.map(item => ({
+      menuItem: item.menuItem._id,
+      name: item.menuItem.nama,
+      price: item.menuItem.harga,
+      quantity: item.quantity,
+      addons: item.addons,
+      totalPrice: item.totalPrice
+    }));
+
+    // Calculate total amount
+    const totalAmount = cart.items.reduce((sum, item) => sum + item.totalPrice, 0);
+
+    // Create the order
+    const order = new Order({
+      user: req.user.id,
+      items: orderItems,
+      totalAmount,
+      paymentMethod,
+      status: 'pending',
+      deliveryAddress: deliveryAddress || '',
+      notes: notes || ''
+    });
+
+    await order.save();
+
+    // Clear the cart
+    cart.items = [];
+    await cart.save();
+
+    res.status(201).json(order);
+  } catch (err) {
+    console.error('Error during checkout:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   getCart,
   addToCart,
@@ -196,4 +244,5 @@ module.exports = {
   removeCartItem,
   bulkDeleteCartItems,
   clearCart,
+  checkout
 };
