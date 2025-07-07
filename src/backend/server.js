@@ -7,6 +7,7 @@ const menuRoutes = require('./routes/menu')
 const favoriteRoutes = require('./routes/favorite')
 const profileRoutes = require('./routes/profile')
 const cartRoutes = require('./routes/cart');
+const orderRoutes = require('./routes/order');
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ app.use('/api/menu', menuRoutes);
 app.use('/api/favorite', favoriteRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/cart', cartRoutes);
+app.use('/api/orders', orderRoutes);
 
 app.get('/', (req, res) => res.send('API Ngopilosofi is running'));
 
