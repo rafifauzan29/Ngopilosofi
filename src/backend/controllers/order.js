@@ -1,6 +1,5 @@
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
-const MenuItem = require('../models/MenuItem');
 
 // Create a new order
 const createOrder = async (req, res) => {
@@ -43,9 +42,6 @@ const createOrder = async (req, res) => {
     cart.items = [];
     await cart.save();
 
-    // ❌ Hapus email konfirmasi
-    // await sendOrderConfirmationEmail(req.user, order);
-
     res.status(201).json(order);
   } catch (err) {
     console.error('Error creating order:', err);
@@ -53,14 +49,25 @@ const createOrder = async (req, res) => {
   }
 };
 
-// Get all orders for a user
+// Get all orders for a user (with pagination)
 const getOrders = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
     const orders = await Order.find({ user: req.user.id })
       .sort({ orderDate: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
       .populate('items.menuItem');
 
-    res.json(orders);
+    const totalCount = await Order.countDocuments({ user: req.user.id });
+    const hasMore = page * limit < totalCount;
+
+    res.json({
+      orders,
+      hasMore
+    });
   } catch (err) {
     console.error('Error getting orders:', err);
     res.status(500).json({ message: 'Server error' });

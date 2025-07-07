@@ -634,32 +634,33 @@ export default {
         const paymentMethod = this.paymentMethods.find(m => m.id === this.selectedPaymentMethod)?.name || 'Tunai (Cash)';
 
         if (!token) {
-          // Offline mode - save to local storage
+          // 🔁 OFFLINE MODE
+          const totalAmount = Number(this.selectedItemsPrice || 0);
           const order = {
             _id: Date.now().toString(),
             items: this.selectedItems,
-            totalAmount: this.selectedItemsPrice,
+            totalAmount,
             paymentMethod,
             status: 'pending',
             orderDate: new Date().toISOString()
           };
 
-          // Save to local storage
+          // Simpan ke Preferences
           const { value: savedOrders } = await Preferences.get({ key: 'user_orders' });
           const orders = savedOrders ? JSON.parse(savedOrders) : [];
           orders.unshift(order);
           await Preferences.set({ key: 'user_orders', value: JSON.stringify(orders) });
 
-          // Remove selected items from cart
+          // Hapus item yang sudah dipilih dari cart
           this.cartItems = this.cartItems.filter(item => !item.selected);
           await this.saveLocalCart();
 
           this.checkoutPopupOpened = false;
-          this.showSuccessDialog();
+          this.showSuccessDialog(totalAmount);
           return;
         }
 
-        // Online mode - send to server
+        // 🔁 ONLINE MODE
         const response = await fetch('https://ngopilosofi-production.up.railway.app/api/orders', {
           method: 'POST',
           headers: {
@@ -679,16 +680,16 @@ export default {
         if (!response.ok) throw new Error('Checkout failed');
 
         const order = await response.json();
+        console.log('Order response:', order); // ✅ Log jika perlu debug
 
-        // Remove selected items from cart
+        // Hapus item yang sudah dipilih dari cart
         await this.cartStore.bulkRemoveItems(
           this.cartItems.filter(item => item.selected).map(item => item._id)
         );
         await this.loadCart();
 
         this.checkoutPopupOpened = false;
-        this.showSuccessDialog();
-
+        this.showSuccessDialog(order.totalAmount); // ✅ Gunakan dari response server
       } catch (error) {
         console.error('Error during checkout:', error);
         this.showToast('Gagal melakukan checkout');
@@ -697,11 +698,11 @@ export default {
       }
     },
 
-    showSuccessDialog() {
+    showSuccessDialog(totalAmount) {
       f7ready(() => {
         f7.dialog.create({
           title: 'Pesanan Berhasil',
-          text: `Pesanan Anda telah berhasil dibuat dengan total ${this.formatRupiah(this.selectedItemsPrice)}`,
+          text: `Pesanan Anda telah berhasil dibuat dengan total ${this.formatRupiah(Number(totalAmount))}`,
           buttons: [
             {
               text: 'Lihat Pesanan',
