@@ -1,18 +1,15 @@
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
 
-// Create a new order
 const createOrder = async (req, res) => {
   try {
     const { paymentMethod, deliveryAddress, notes } = req.body;
 
-    // Get user's cart
     const cart = await Cart.findOne({ user: req.user.id }).populate('items.menuItem');
     if (!cart || cart.items.length === 0) {
       return res.status(400).json({ message: 'Cart is empty' });
     }
 
-    // Prepare order items
     const orderItems = cart.items.map(item => ({
       menuItem: item.menuItem._id,
       name: item.menuItem.nama,
@@ -22,10 +19,8 @@ const createOrder = async (req, res) => {
       totalPrice: item.totalPrice
     }));
 
-    // Calculate total amount
     const totalAmount = cart.items.reduce((sum, item) => sum + item.totalPrice, 0);
 
-    // Create the order
     const order = new Order({
       user: req.user.id,
       items: orderItems,
@@ -38,7 +33,6 @@ const createOrder = async (req, res) => {
 
     await order.save();
 
-    // Clear the cart
     cart.items = [];
     await cart.save();
 
@@ -49,7 +43,6 @@ const createOrder = async (req, res) => {
   }
 };
 
-// Get all orders for a user (with pagination)
 const getOrders = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -74,7 +67,6 @@ const getOrders = async (req, res) => {
   }
 };
 
-// Get a specific order
 const getOrderById = async (req, res) => {
   try {
     const order = await Order.findOne({
@@ -93,7 +85,6 @@ const getOrderById = async (req, res) => {
   }
 };
 
-// Update order status (admin only)
 const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -113,7 +104,6 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
-// Cancel an order
 const cancelOrder = async (req, res) => {
   try {
     const order = await Order.findOne({
@@ -125,7 +115,6 @@ const cancelOrder = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    // Only allow cancellation if order is still pending
     if (order.status !== 'pending') {
       return res.status(400).json({ message: 'Order can only be cancelled when pending' });
     }

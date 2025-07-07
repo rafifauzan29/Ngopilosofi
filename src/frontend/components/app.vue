@@ -191,7 +191,7 @@ export default {
 ::v-deep(.toolbar-custom .active-link .f7-icons),
 ::v-deep(.toolbar-custom .active-link .tabbar-label) {
   color: #331c2c !important;
-  font-weight: 600;
+  font-weight: 550;
 }
 
 .cart-link {

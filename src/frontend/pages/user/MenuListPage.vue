@@ -54,23 +54,23 @@
       </div>
     </div>
 
-    <f7-popup v-model:opened="popupOpened">
-      <f7-page class="page-bg">
-        <f7-navbar title="Detail Produk">
-          <f7-nav-right>
-            <f7-link popup-close>Close</f7-link>
-          </f7-nav-right>
-        </f7-navbar>
+    <f7-popup v-model:opened="popupOpened" class="detail-product-popup">
+      <div class="modal-content" v-if="selectedItem">
+        <div class="modal-header">
+          <h2>Detail Produk</h2>
+          <f7-link popup-close class="close-btn" aria-label="Tutup">
+            <f7-icon ios="f7:xmark" md="material:close" size="20"></f7-icon>
+          </f7-link>
+        </div>
 
-        <f7-block class="text-align-center">
-          <img v-if="selectedItem" :src="selectedItem.gambar"
-            style="width: 200px; border-radius: 12px; margin-bottom: 10px;" />
-          <h2>{{ selectedItem?.nama }}</h2>
-          <h3 style="color: #666;">{{ formatRupiah(selectedItem?.harga) }}</h3>
-          <p style="padding: 0 20px;">{{ selectedItem?.deskripsi }}</p>
+        <div class="product-body text-align-center">
+          <img :src="selectedItem.gambar" style="width: 200px; border-radius: 12px; margin-bottom: 10px;" />
+          <h2>{{ selectedItem.nama }}</h2>
+          <h3 style="color: #666;">{{ formatRupiah(selectedItem.harga) }}</h3>
+          <p style="padding: 0 20px;">{{ selectedItem.deskripsi }}</p>
 
           <f7-list strong inset>
-            <f7-list-item v-for="(addon, index) in selectedItem?.tambahan" :key="index" :title="addon.nama"
+            <f7-list-item v-for="(addon, index) in selectedItem.tambahan" :key="index" :title="addon.nama"
               :after="formatRupiah(addon.harga)">
               <template #media>
                 <f7-checkbox :checked="isAddonSelected(addon)" @change="toggleAddon(addon)" />
@@ -78,12 +78,7 @@
             </f7-list-item>
           </f7-list>
 
-          <div style="
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              margin: 20px;
-            ">
+          <div style="display: flex; align-items: center; justify-content: center; margin: 20px;">
             <f7-button small @click="decreaseQuantity">-</f7-button>
             <div style="margin: 0 15px;">{{ quantity }}</div>
             <f7-button small @click="increaseQuantity">+</f7-button>
@@ -92,19 +87,20 @@
           <f7-button fill color="black" @click="addToCart" class="add-to-cart-btn">
             Tambah ke Pesanan
           </f7-button>
-        </f7-block>
-      </f7-page>
+        </div>
+      </div>
     </f7-popup>
 
-    <f7-popup v-model:opened="variantListPopupOpened" class="variant-popup-custom">
-      <f7-page class="variant-popup-page">
-        <f7-navbar title="Variasi Pesanan">
-          <f7-nav-right>
-            <f7-link popup-close>Close</f7-link>
-          </f7-nav-right>
-        </f7-navbar>
+    <f7-popup v-model:opened="variantListPopupOpened" class="variant-product-popup">
+      <div class="modal-content" v-if="selectedVariants && selectedVariants.length">
+        <div class="modal-header">
+          <h2>Variasi Pesanan</h2>
+          <f7-link popup-close class="close-btn" aria-label="Tutup">
+            <f7-icon ios="f7:xmark" md="material:close" size="20"></f7-icon>
+          </f7-link>
+        </div>
 
-        <f7-block class="variant-list-wrapper">
+        <div class="variant-list-wrapper">
           <div class="variant-box" v-for="(variant, index) in selectedVariants" :key="index">
             <div class="product-title">
               {{ variant.menuItem?.nama || '-' }}
@@ -116,8 +112,8 @@
                   <span class="addon-name">{{ addon.nama }}:</span>
                   <span class="addon-value">
                     {{ addon.value !== undefined ? addon.value : (addon.harga !== undefined ? formatRupiah(addon.harga)
-                      :
-                      '-') }}
+                    :
+                    '-') }}
                   </span>
                 </div>
               </div>
@@ -138,8 +134,8 @@
           <f7-button fill class="tambah-btn" @click="openDetail(selectedItem)">
             Tambah custom-an lain
           </f7-button>
-        </f7-block>
-      </f7-page>
+        </div>
+      </div>
     </f7-popup>
 
   </f7-page>
@@ -947,5 +943,34 @@ export default {
 
 .edit-icon {
   color: #331c2c !important;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #ccc;
+  background-color: #ede0d1;
+}
+
+.close-btn {
+  color: #666;
+}
+
+.modal-content {
+  padding: 16px;
+  max-height: 100vh;
+  overflow-y: auto;
+}
+
+.product-body {
+  padding-top: 30px;
+}
+
+.detail-product-popup {
+  background-color: #ede0d1;
+}
+.variant-product-popup {
+  background-color: #ede0d1;
 }
 </style>

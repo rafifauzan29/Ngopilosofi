@@ -189,7 +189,6 @@ const removeCartItem = async (req, res) => {
   }
 };
 
-// Add this to your existing cartController.js
 const checkout = async (req, res) => {
   try {
     const { paymentMethod, deliveryAddress, notes } = req.body;
@@ -200,7 +199,6 @@ const checkout = async (req, res) => {
       return res.status(400).json({ message: 'Cart is empty' });
     }
 
-    // Prepare order items
     const orderItems = cart.items.map(item => ({
       menuItem: item.menuItem._id,
       name: item.menuItem.nama,
@@ -210,10 +208,8 @@ const checkout = async (req, res) => {
       totalPrice: item.totalPrice
     }));
 
-    // Calculate total amount
     const totalAmount = cart.items.reduce((sum, item) => sum + item.totalPrice, 0);
 
-    // Create the order
     const order = new Order({
       user: req.user.id,
       items: orderItems,
@@ -226,7 +222,6 @@ const checkout = async (req, res) => {
 
     await order.save();
 
-    // Clear the cart
     cart.items = [];
     await cart.save();
 

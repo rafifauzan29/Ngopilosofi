@@ -1,6 +1,6 @@
 const MenuItem = require('../models/MenuItem');
 
-exports.getAllMenuItems = async (req, res) => {
+const getAllMenuItems = async (req, res) => {
   try {
     const menuItems = await MenuItem.find();
     res.json(menuItems);
@@ -9,7 +9,7 @@ exports.getAllMenuItems = async (req, res) => {
   }
 };
 
-exports.getMenuItemsByCategory = async (req, res) => {
+const getMenuItemsByCategory = async (req, res) => {
   try {
     const category = req.params.category;
     const menuItems = await MenuItem.find({ kategori: category });
@@ -19,13 +19,13 @@ exports.getMenuItemsByCategory = async (req, res) => {
   }
 };
 
-exports.toggleFavorite = async (req, res) => {
+const toggleFavorite = async (req, res) => {
   try {
     const menuItem = await MenuItem.findById(req.params.id);
     if (!menuItem) {
       return res.status(404).json({ message: 'Menu item not found' });
     }
-    
+
     menuItem.favorite = !menuItem.favorite;
     const updatedItem = await menuItem.save();
     res.json(updatedItem);
@@ -34,7 +34,7 @@ exports.toggleFavorite = async (req, res) => {
   }
 };
 
-exports.addMenuItem = async (req, res) => {
+const addMenuItem = async (req, res) => {
   const menuItem = new MenuItem({
     nama: req.body.nama,
     harga: req.body.harga,
@@ -50,4 +50,11 @@ exports.addMenuItem = async (req, res) => {
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
+};
+
+module.exports = {
+  getAllMenuItems,
+  getMenuItemsByCategory,
+  toggleFavorite,
+  addMenuItem
 };
