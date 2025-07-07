@@ -1,6 +1,5 @@
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
-const MenuItem = require('../models/MenuItem');
 
 // Membuat order baru dari cart
 const createOrder = async (req, res) => {
@@ -25,15 +24,15 @@ const createOrder = async (req, res) => {
       specialRequest: item.specialRequest || ''
     }));
 
-    // Buat order baru
+    // Buat order baru (langsung selesai dan dibayar untuk demo)
     const order = new Order({
       user: req.user.id,
       items: orderItems,
       totalPrice,
       paymentMethod,
       notes: notes || '',
-      status: 'pending',
-      paymentStatus: 'pending'
+      status: 'completed',         // langsung selesai
+      paymentStatus: 'paid'        // langsung dianggap dibayar
     });
 
     // Simpan order
@@ -98,7 +97,6 @@ const cancelOrder = async (req, res) => {
       return res.status(404).json({ message: 'Order tidak ditemukan' });
     }
 
-    // Hanya bisa membatalkan order yang masih pending
     if (order.status !== 'pending') {
       return res.status(400).json({ 
         message: 'Order tidak bisa dibatalkan karena sudah diproses' 
@@ -129,14 +127,12 @@ const addReview = async (req, res) => {
       return res.status(404).json({ message: 'Order tidak ditemukan' });
     }
 
-    // Pastikan order sudah selesai
     if (order.status !== 'completed') {
       return res.status(400).json({ 
         message: 'Hanya bisa memberikan ulasan untuk order yang sudah selesai' 
       });
     }
 
-    // Pastikan belum ada ulasan
     if (order.review) {
       return res.status(400).json({ 
         message: 'Order ini sudah memiliki ulasan' 
@@ -158,15 +154,13 @@ const addReview = async (req, res) => {
   }
 };
 
-// Admin: Mendapatkan semua order (untuk admin)
+// Admin: Mendapatkan semua order
 const getAllOrders = async (req, res) => {
   try {
     const { status } = req.query;
     const filter = {};
 
-    if (status) {
-      filter.status = status;
-    }
+    if (status) filter.status = status;
 
     const orders = await Order.find(filter)
       .sort({ createdAt: -1 })
