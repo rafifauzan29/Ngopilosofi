@@ -973,4 +973,8 @@ export default {
 .variant-product-popup {
   background-color: #ede0d1;
 }
+.is-native-app .detail-product-popup,
+.is-native-app .variant-product-popup {
+  padding-top: 30px;
+}
 </style>

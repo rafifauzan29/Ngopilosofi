@@ -870,4 +870,7 @@ export default {
   margin: 16px 0;
 }
 
+.is-native-app .order-detail-modal {
+  padding-top: 30px;
+}
 </style>

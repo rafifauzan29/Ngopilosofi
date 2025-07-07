@@ -7,6 +7,11 @@ import '../css/icons.css'
 import App from '../components/app.vue'
 import axios from 'axios'
 import { Preferences } from '@capacitor/preferences'
+import { Capacitor } from '@capacitor/core' 
+
+if (Capacitor.isNativePlatform()) {
+  document.body.classList.add('is-native-app');
+}
 
 const pinia = createPinia()
 
