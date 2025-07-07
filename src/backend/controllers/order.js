@@ -1,16 +1,14 @@
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
 const MenuItem = require('../models/MenuItem');
-const { sendOrderConfirmationEmail } = require('../services/emailService');
 
 // Create a new order
 const createOrder = async (req, res) => {
   try {
     const { paymentMethod, deliveryAddress, notes } = req.body;
-    
+
     // Get user's cart
     const cart = await Cart.findOne({ user: req.user.id }).populate('items.menuItem');
-    
     if (!cart || cart.items.length === 0) {
       return res.status(400).json({ message: 'Cart is empty' });
     }
@@ -40,13 +38,13 @@ const createOrder = async (req, res) => {
     });
 
     await order.save();
-    
+
     // Clear the cart
     cart.items = [];
     await cart.save();
 
-    // Send confirmation email
-    await sendOrderConfirmationEmail(req.user, order);
+    // ❌ Hapus email konfirmasi
+    // await sendOrderConfirmationEmail(req.user, order);
 
     res.status(201).json(order);
   } catch (err) {
@@ -61,7 +59,7 @@ const getOrders = async (req, res) => {
     const orders = await Order.find({ user: req.user.id })
       .sort({ orderDate: -1 })
       .populate('items.menuItem');
-    
+
     res.json(orders);
   } catch (err) {
     console.error('Error getting orders:', err);
@@ -92,7 +90,7 @@ const getOrderById = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    
+
     const order = await Order.findById(req.params.id);
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
