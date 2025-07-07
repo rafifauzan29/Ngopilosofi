@@ -5,8 +5,8 @@ const MenuItem = require('../models/MenuItem');
 // Membuat order baru dari cart
 const createOrder = async (req, res) => {
   try {
-    const { paymentMethod, deliveryAddress, notes } = req.body;
-    
+    const { paymentMethod, notes } = req.body;
+
     // Dapatkan cart user
     const cart = await Cart.findOne({ user: req.user.id }).populate('items.menuItem');
     if (!cart || cart.items.length === 0) {
@@ -31,7 +31,6 @@ const createOrder = async (req, res) => {
       items: orderItems,
       totalPrice,
       paymentMethod,
-      deliveryAddress: deliveryAddress || '',
       notes: notes || '',
       status: 'pending',
       paymentStatus: 'pending'
@@ -60,7 +59,7 @@ const getUserOrders = async (req, res) => {
     const orders = await Order.find({ user: req.user.id })
       .sort({ createdAt: -1 })
       .populate('items.menuItem');
-      
+
     res.json(orders);
   } catch (err) {
     console.error('Error getting user orders:', err);
@@ -120,7 +119,7 @@ const cancelOrder = async (req, res) => {
 const addReview = async (req, res) => {
   try {
     const { rating, comment } = req.body;
-    
+
     const order = await Order.findOne({
       _id: req.params.id,
       user: req.user.id
@@ -164,7 +163,7 @@ const getAllOrders = async (req, res) => {
   try {
     const { status } = req.query;
     const filter = {};
-    
+
     if (status) {
       filter.status = status;
     }
@@ -185,7 +184,7 @@ const getAllOrders = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    
+
     const order = await Order.findById(req.params.id);
     if (!order) {
       return res.status(404).json({ message: 'Order tidak ditemukan' });

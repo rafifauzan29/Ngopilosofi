@@ -48,8 +48,6 @@ const orderSchema = new mongoose.Schema({
     enum: ['pending', 'paid', 'failed', 'refunded'],
     default: 'pending'
   },
-  deliveryAddress: String,
-  contactNumber: String,
   notes: String,
   review: {
     rating: {
@@ -73,16 +71,16 @@ const orderSchema = new mongoose.Schema({
 orderSchema.index({ user: 1, status: 1 });
 orderSchema.index({ createdAt: -1 });
 
-orderSchema.pre('save', function(next) {
+orderSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
 });
 
-orderSchema.statics.findByUser = function(userId) {
+orderSchema.statics.findByUser = function (userId) {
   return this.find({ user: userId }).sort({ createdAt: -1 });
 };
 
-orderSchema.methods.updateStatus = function(newStatus) {
+orderSchema.methods.updateStatus = function (newStatus) {
   this.status = newStatus;
   return this.save();
 };

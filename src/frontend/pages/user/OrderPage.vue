@@ -648,7 +648,7 @@ export default {
         // Get payment method name
         const paymentMethod = this.paymentMethods.find(m => m.id === this.selectedPaymentMethod)?.name || 'Unknown';
 
-        // Create new order
+        // Create new order (TANPA deliveryAddress)
         const response = await fetch('https://ngopilosofi-production.up.railway.app/api/orders', {
           method: 'POST',
           headers: {
@@ -657,7 +657,8 @@ export default {
           },
           body: JSON.stringify({
             items: orderItems,
-            paymentMethod: paymentMethod
+            paymentMethod: paymentMethod,
+            notes: '' // Jika pakai catatan. Kalau tidak perlu, hapus juga
           })
         });
 
@@ -717,11 +718,9 @@ export default {
 
     async saveOrderLocally(orderData) {
       try {
-        // Get existing orders from local storage
         const { value: existingOrders } = await Preferences.get({ key: '/user/order-history/' });
         const orders = existingOrders ? JSON.parse(existingOrders) : [];
 
-        // Format order data for local storage
         const formattedOrder = {
           _id: orderData._id,
           orderNumber: orderData._id.substring(0, 8).toUpperCase(),
@@ -743,10 +742,8 @@ export default {
           reviewed: false
         };
 
-        // Add new order to beginning of array
         orders.unshift(formattedOrder);
 
-        // Save updated orders to local storage
         await Preferences.set({
           key: '/user/order-history/',
           value: JSON.stringify(orders)
