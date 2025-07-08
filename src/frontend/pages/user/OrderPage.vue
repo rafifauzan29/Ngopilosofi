@@ -21,6 +21,8 @@
     </f7-block>
 
     <f7-block v-else class="cart-container">
+      <div class="cart-title">Keranjang Belanja</div>
+
       <div class="cart-header">
         <f7-row>
           <f7-col>
@@ -107,11 +109,11 @@
             <div class="section-title">Jumlah</div>
             <div class="quantity-control">
               <f7-button small round @click="decreaseEditQuantity" class="quantity-btn minus">
-                <f7-icon ios="f7:minus" aurora="f7:minus" md="material:remove"></f7-icon>
+                <f7-icon ios="f7:minus" md="material:remove"></f7-icon>
               </f7-button>
               <div class="quantity-value">{{ editQuantity }}</div>
               <f7-button small round @click="increaseEditQuantity" class="quantity-btn plus">
-                <f7-icon ios="f7:plus" aurora="f7:plus" md="material:add"></f7-icon>
+                <f7-icon ios="f7:plus" md="material:add"></f7-icon>
               </f7-button>
             </div>
           </div>
@@ -123,6 +125,7 @@
       </f7-page>
     </f7-popup>
 
+    <!-- Checkout Popup -->
     <f7-popup v-model:opened="checkoutPopupOpened" class="checkout-popup">
       <f7-page class="checkout-popup-bg">
         <f7-navbar title="Konfirmasi Pesanan" class="popup-navbar">
@@ -162,13 +165,14 @@
             <div class="payment-options">
               <div v-for="method in paymentMethods" :key="method.id" class="payment-option"
                 :class="{ 'selected': selectedPaymentMethod === method.id }" @click="selectedPaymentMethod = method.id">
-                <f7-icon :ios="method.icon" :aurora="method.icon" :md="method.icon" size="24"></f7-icon>
+                <f7-icon :ios="method.icon" :md="method.icon" size="24"></f7-icon>
                 <span>{{ method.name }}</span>
-                <f7-icon v-if="selectedPaymentMethod === method.id" ios="f7:checkmark_alt" aurora="f7:checkmark_alt"
-                  md="material:check" size="16" class="check-icon"></f7-icon>
+                <f7-icon v-if="selectedPaymentMethod === method.id" ios="f7:checkmark_alt" md="material:check" size="16"
+                  class="check-icon"></f7-icon>
               </div>
             </div>
           </div>
+
           <f7-button large fill round color="primary" class="confirm-checkout-btn" :disabled="!selectedPaymentMethod"
             @click="confirmCheckout">
             {{ selectedPaymentMethodName
@@ -634,7 +638,6 @@ export default {
         const paymentMethod = this.paymentMethods.find(m => m.id === this.selectedPaymentMethod)?.name || 'Tunai (Cash)';
 
         if (!token) {
-          // 🔁 OFFLINE MODE
           const totalAmount = Number(this.selectedItemsPrice || 0);
           const order = {
             _id: Date.now().toString(),
@@ -645,13 +648,11 @@ export default {
             orderDate: new Date().toISOString()
           };
 
-          // Simpan ke Preferences
           const { value: savedOrders } = await Preferences.get({ key: 'user_orders' });
           const orders = savedOrders ? JSON.parse(savedOrders) : [];
           orders.unshift(order);
           await Preferences.set({ key: 'user_orders', value: JSON.stringify(orders) });
 
-          // Hapus item yang sudah dipilih dari cart
           this.cartItems = this.cartItems.filter(item => !item.selected);
           await this.saveLocalCart();
 
@@ -660,7 +661,6 @@ export default {
           return;
         }
 
-        // 🔁 ONLINE MODE
         const response = await fetch('https://ngopilosofi-production.up.railway.app/api/orders', {
           method: 'POST',
           headers: {
@@ -680,16 +680,15 @@ export default {
         if (!response.ok) throw new Error('Checkout failed');
 
         const order = await response.json();
-        console.log('Order response:', order); // ✅ Log jika perlu debug
+        console.log('Order response:', order);
 
-        // Hapus item yang sudah dipilih dari cart
         await this.cartStore.bulkRemoveItems(
           this.cartItems.filter(item => item.selected).map(item => item._id)
         );
         await this.loadCart();
 
         this.checkoutPopupOpened = false;
-        this.showSuccessDialog(order.totalAmount); // ✅ Gunakan dari response server
+        this.showSuccessDialog(order.totalAmount);
       } catch (error) {
         console.error('Error during checkout:', error);
         this.showToast('Gagal melakukan checkout');
@@ -1301,5 +1300,12 @@ export default {
 .payment-option .check-icon {
   color: #331c2c;
   margin-left: 8px;
+}
+.cart-title {
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+  color: #331c2c;
+  padding-bottom: 20px;
 }
 </style>
