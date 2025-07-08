@@ -17,13 +17,35 @@
       </div>
       <div class="form-group">
         <label for="password" class="form-label">Password</label>
-        <input id="password" type="password" v-model="password" placeholder="Masukkan password" class="form-input"
-          required />
+        <div class="password-input-container">
+          <input 
+            id="password" 
+            :type="showPassword ? 'text' : 'password'" 
+            v-model="password" 
+            placeholder="Masukkan password" 
+            class="form-input password-input" 
+            required 
+          />
+          <button type="button" class="password-toggle" @click="togglePasswordVisibility('password')">
+            <f7-icon :f7="showPassword ? 'eye_fill' : 'eye_slash_fill'" size="20"></f7-icon>
+          </button>
+        </div>
       </div>
       <div class="form-group">
         <label for="confirm-password" class="form-label">Konfirmasi Password</label>
-        <input id="confirm-password" type="password" v-model="confirmPassword" placeholder="Ulangi password"
-          class="form-input" required />
+        <div class="password-input-container">
+          <input 
+            id="confirm-password" 
+            :type="showConfirmPassword ? 'text' : 'password'" 
+            v-model="confirmPassword" 
+            placeholder="Ulangi password" 
+            class="form-input password-input" 
+            required 
+          />
+          <button type="button" class="password-toggle" @click="togglePasswordVisibility('confirm')">
+            <f7-icon :f7="showConfirmPassword ? 'eye_fill' : 'eye_slash_fill'" size="20"></f7-icon>
+          </button>
+        </div>
       </div>
       <div class="register-actions">
         <button type="submit" class="register-button">Daftar</button>
@@ -48,12 +70,27 @@ export default {
       email: '',
       password: '',
       confirmPassword: '',
-      error: ''
+      error: '',
+      showPassword: false,
+      showConfirmPassword: false
     };
   },
   methods: {
+    togglePasswordVisibility(field) {
+      if (field === 'password') {
+        this.showPassword = !this.showPassword;
+      } else {
+        this.showConfirmPassword = !this.showConfirmPassword;
+      }
+    },
     async registerUser() {
       this.error = '';
+
+      // Validasi form
+      if (!this.name || !this.email || !this.password || !this.confirmPassword) {
+        f7.dialog.alert('Harap lengkapi semua field.', 'Error');
+        return;
+      }
 
       if (this.password.length < 8) {
         f7.dialog.alert('Password harus terdiri dari minimal 8 karakter.', 'Error');
@@ -62,6 +99,13 @@ export default {
 
       if (this.password !== this.confirmPassword) {
         f7.dialog.alert('Password dan konfirmasi password tidak cocok.', 'Error');
+        return;
+      }
+
+      // Validasi email sederhana
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(this.email)) {
+        f7.dialog.alert('Format email tidak valid.', 'Error');
         return;
       }
 
@@ -121,7 +165,7 @@ export default {
 
 .register-header {
   text-align: center;
-  margin-bottom: 0px;
+  margin-bottom: 20px;
 }
 
 .register-logo {
@@ -149,7 +193,7 @@ export default {
 }
 
 .form-group {
-  margin-bottom: 10px;
+  margin-bottom: 15px;
 }
 
 .form-label {
@@ -157,6 +201,7 @@ export default {
   font-size: 14px;
   font-weight: bold;
   color: #5a3c4c;
+  margin-bottom: 5px;
 }
 
 .form-input {
@@ -166,7 +211,44 @@ export default {
   font-size: 16px;
   border: 2px solid #331c2c;
   border-radius: 10px;
-  margin-top: 6px;
+  box-sizing: border-box;
+  transition: border-color 0.3s ease;
+}
+
+.form-input:focus {
+  border-color: #5a3c4c;
+  outline: none;
+}
+
+.password-input-container {
+  position: relative;
+}
+
+.password-input {
+  padding-right: 40px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #5a3c4c;
+  cursor: pointer;
+  outline: none;
+}
+
+.password-toggle i {
+  font-size: 20px;
 }
 
 .register-actions {
@@ -182,14 +264,19 @@ export default {
   width: 100%;
   max-width: 320px;
   font-size: 16px;
-  border-radius: 12px;
-  padding: 12px;
+  border-radius: 10px;
+  padding: 14px;
   border: none;
   cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.register-button:hover {
+  background-color: #5a3c4c;
 }
 
 .login-text {
-  margin-top: 16px;
+  margin-top: 20px;
   font-size: 14px;
   color: #5a3c4c;
   text-align: center;
@@ -199,5 +286,21 @@ export default {
   color: #331c2c;
   font-weight: bold;
   margin-left: 4px;
+  text-decoration: none;
+}
+
+@media (max-width: 480px) {
+  .register-page {
+    padding: 20px 15px;
+  }
+  
+  .register-title {
+    font-size: 24px;
+  }
+  
+  .form-input {
+    padding: 10px;
+    font-size: 15px;
+  }
 }
 </style>

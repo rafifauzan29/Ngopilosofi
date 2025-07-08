@@ -13,8 +13,19 @@
       </div>
       <div class="form-group">
         <label for="password" class="form-label">Password</label>
-        <input id="password" type="password" v-model="password" placeholder="Masukkan password" class="form-input"
-          required />
+        <div class="password-input-container">
+          <input 
+            id="password" 
+            :type="showPassword ? 'text' : 'password'" 
+            v-model="password" 
+            placeholder="Masukkan password" 
+            class="form-input password-input" 
+            required 
+          />
+          <button type="button" class="password-toggle" @click="togglePasswordVisibility">
+            <f7-icon :f7="showPassword ? 'eye_fill' : 'eye_slash_fill'" size="20"></f7-icon>
+          </button>
+        </div>
       </div>
       <div class="login-actions">
         <button type="submit" class="button button-fill login-button">Login</button>
@@ -38,7 +49,8 @@ export default {
     return {
       email: '',
       password: '',
-      error: ''
+      error: '',
+      showPassword: false
     }
   },
   methods: {
@@ -78,6 +90,9 @@ export default {
         this.error = 'Terjadi kesalahan saat login.'
         console.error(err)
       }
+    },
+    togglePasswordVisibility() {
+      this.showPassword = !this.showPassword
     }
   },
   async mounted() {
@@ -147,6 +162,38 @@ export default {
   border: 2px solid #331c2c;
   border-radius: 10px;
   margin-top: 6px;
+  box-sizing: border-box;
+}
+
+.password-input-container {
+  position: relative;
+}
+
+.password-input {
+  padding-right: 40px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #5a3c4c;
+  cursor: pointer;
+  outline: none;
+}
+
+.password-toggle i {
+  font-size: 20px;
 }
 
 .login-actions {
@@ -164,6 +211,7 @@ export default {
   font-size: 16px;
   border-radius: 12px;
   padding: 12px;
+  border: none;
 }
 
 .register-text {
@@ -177,5 +225,6 @@ export default {
   color: #331c2c;
   font-weight: bold;
   margin-left: 4px;
+  text-decoration: none;
 }
 </style>

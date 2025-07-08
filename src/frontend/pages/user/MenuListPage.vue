@@ -8,12 +8,18 @@
       </f7-nav-right>
     </f7-navbar>
 
+    <!-- Search Section -->
     <f7-block class="search-container">
-      <f7-searchbar placeholder="Cari menu..." :clear-button="true" @input="onSearch" class="custom-searchbar" />
+      <div v-if="loading" class="skeleton-searchbar"></div>
+      <f7-searchbar v-else placeholder="Cari menu..." :clear-button="true" @input="onSearch" class="custom-searchbar" />
     </f7-block>
 
+    <!-- Category Section -->
     <f7-block class="category-container">
-      <div class="chips-wrapper">
+      <div v-if="loading" class="skeleton-chips">
+        <div class="skeleton-chip" v-for="i in 5" :key="'chip-skeleton-' + i"></div>
+      </div>
+      <div v-else class="chips-wrapper">
         <f7-chip v-for="kategori in kategoriList" :key="kategori" :text="kategori" :outline="false"
           @click="selectedKategori = kategori" class="category-chip" :class="{
             'selected-chip': selectedKategori === kategori,
@@ -22,8 +28,27 @@
       </div>
     </f7-block>
 
+    <!-- Menu Items Section -->
     <f7-block class="menu-container">
-      <div class="menu-grid">
+      <div v-if="loading" class="loading-state">
+        <div class="skeleton-card" v-for="i in 6" :key="'skeleton-' + i"></div>
+      </div>
+      <div v-else-if="semuaMenu.length === 0" class="empty-state">
+        <div class="empty-illustration">
+          <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M50 50H150V125H50V50Z" fill="#F3F4F6" />
+            <path d="M50 125H150V150C150 155.523 145.523 160 140 160H60C54.4772 160 50 155.523 50 150V125Z"
+              fill="#E5E7EB" />
+            <path d="M75 75H125V100H75V75Z" fill="#D1D5DB" />
+            <path d="M75 112.5H125V125H75V112.5Z" fill="#9CA3AF" />
+            <path d="M75 137.5H125V150H75V137.5Z" fill="#9CA3AF" />
+          </svg>
+        </div>
+        <h3>Menu Tidak Tersedia</h3>
+        <p>Silakan coba lagi nanti</p>
+        <f7-button @click="fetchMenuItems" class="action-button">Muat Ulang</f7-button>
+      </div>
+      <div v-else class="menu-grid">
         <div v-for="(item, index) in filteredMenu" :key="index" class="menu-card">
           <div class="favorite-icon" @click="toggleFavorite(item)">
             <f7-icon :ios="item.isFavorite ? 'f7:heart_fill' : 'f7:heart'"
@@ -44,6 +69,7 @@
       </div>
     </f7-block>
 
+    <!-- Floating Order Summary -->
     <div v-show="cartStore.totalItems > 0" class="floating-order-summary" @click="goToOrderPage">
       <div class="order-summary-content">
         <div class="item-count">{{ cartStore.totalItems }} item</div>
@@ -54,6 +80,7 @@
       </div>
     </div>
 
+    <!-- Product Detail Popup -->
     <f7-popup v-model:opened="popupOpened" class="detail-product-popup">
       <div class="modal-content" v-if="selectedItem">
         <div class="modal-header">
@@ -91,6 +118,7 @@
       </div>
     </f7-popup>
 
+    <!-- Variant List Popup -->
     <f7-popup v-model:opened="variantListPopupOpened" class="variant-product-popup">
       <div class="modal-content" v-if="selectedVariants && selectedVariants.length">
         <div class="modal-header">
@@ -112,8 +140,8 @@
                   <span class="addon-name">{{ addon.nama }}:</span>
                   <span class="addon-value">
                     {{ addon.value !== undefined ? addon.value : (addon.harga !== undefined ? formatRupiah(addon.harga)
-                    :
-                    '-') }}
+                      :
+                      '-') }}
                   </span>
                 </div>
               </div>
@@ -137,7 +165,6 @@
         </div>
       </div>
     </f7-popup>
-
   </f7-page>
 </template>
 
@@ -163,6 +190,7 @@ export default {
     const variantListPopupOpened = ref(false);
     const isAdding = ref(false);
     const editingVariantId = ref(null);
+    const loading = ref(true);
 
     const loadPreferences = async () => {
       try {
@@ -479,6 +507,7 @@ export default {
 
     const fetchMenuItems = async () => {
       try {
+        loading.value = true;
         const response = await fetch('https://ngopilosofi-production.up.railway.app/api/menu');
         if (!response.ok) throw new Error('Failed to fetch menu items');
 
@@ -503,6 +532,8 @@ export default {
             cssClass: 'warning-toast',
           }).open();
         }
+      } finally {
+        loading.value = false;
       }
     };
 
@@ -537,6 +568,7 @@ export default {
       pendingFavorites,
       variantListPopupOpened,
       filteredMenu,
+      loading,
       formatRupiah,
       onSearch,
       toggleFavorite,
@@ -970,11 +1002,106 @@ export default {
 .detail-product-popup {
   background-color: #ede0d1;
 }
+
 .variant-product-popup {
   background-color: #ede0d1;
 }
+
 .is-native-app .detail-product-popup,
 .is-native-app .variant-product-popup {
   padding-top: 30px;
+}
+
+/* Loading State */
+.loading-state {
+  padding: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.skeleton-card {
+  height: 200px;
+  background: linear-gradient(90deg, #f2e9e1 25%, #e0d3c5 50%, #f2e9e1 75%);
+  background-size: 200% 100%;
+  border-radius: 16px;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 70vh;
+  padding: 0 24px;
+  text-align: center;
+}
+
+.empty-illustration {
+  margin-bottom: 24px;
+  opacity: 0.7;
+}
+
+.empty-state h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #331c2c;
+  margin-bottom: 8px;
+}
+
+.empty-state p {
+  font-size: 15px;
+  color: #6b5e63;
+  margin-bottom: 24px;
+}
+
+.action-button {
+  --f7-button-bg-color: #331c2c;
+  --f7-button-text-color: #ffffff;
+  --f7-button-font-size: 15px;
+  --f7-button-height: 48px;
+  --f7-button-border-radius: 12px;
+  font-weight: 500;
+  text-transform: none;
+  box-shadow: 0 4px 12px rgba(51, 28, 44, 0.3);
+}
+
+/* Skeleton untuk Searchbar */
+.skeleton-searchbar {
+  height: 44px;
+  background: linear-gradient(90deg, #f2e9e1 25%, #e0d3c5 50%, #f2e9e1 75%);
+  background-size: 200% 100%;
+  border-radius: 12px;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Skeleton untuk Kategori Chips */
+.skeleton-chips {
+  display: flex;
+  gap: 8px;
+  padding: 8px 0 12px;
+  overflow-x: auto;
+}
+
+.skeleton-chip {
+  width: 80px;
+  height: 36px;
+  background: linear-gradient(90deg, #f2e9e1 25%, #e0d3c5 50%, #f2e9e1 75%);
+  background-size: 200% 100%;
+  border-radius: 9999px;
+  animation: shimmer 1.5s infinite;
+  flex-shrink: 0;
 }
 </style>
