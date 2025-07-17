@@ -43,24 +43,6 @@ Aplikasi **mobile & web** berbasis **Framework7 + Vue + Vite + Capacitor** untuk
 
 ---
 
-## 📂 Struktur Proyek
-
-```
-src/
-├── app.vue               # Root app
-├── components/           # Komponen UI
-├── js/
-│   ├── routes.js         # Daftar route
-│   └── stores/cart.js    # Store keranjang (Pinia)
-├── views/                # Halaman user: home, favorite, profile, dll
-public/
-├── icons/                # Ikon app dan splash screen
-assets-src/               # Sumber asli ikon (untuk `framework7 assets`)
-resources/                # Aset tambahan Capacitor (cordova-res)
-```
-
----
-
 ## ⚙️ Konfigurasi Framework7 CLI
 
 ```
