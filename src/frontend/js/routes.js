@@ -1,6 +1,4 @@
 import DashboardPage from '../pages/admin/DashboardPage.vue';
-import MenuManagementPage from '../pages/admin/MenuManagementPage.vue';
-import PromoManagementPage from '../pages/admin/PromoManagementPage.vue';
 
 import StartPage from '../pages/user/StartPage.vue';
 import HomePage from '../pages/user/HomePage.vue';
@@ -30,14 +28,6 @@ var routes = [
   {
     path: '/admin/dashboard/',
     component: DashboardPage,
-  },
-  {
-    path: '/admin/menu-management/',
-    component: MenuManagementPage,
-  },
-  {
-    path: '/admin/promo-management/',
-    component: PromoManagementPage,
   },
   {
     path: '/login/',
