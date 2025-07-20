@@ -8,13 +8,11 @@
       </f7-nav-right>
     </f7-navbar>
 
-    <!-- Search Section -->
     <f7-block class="search-container">
       <div v-if="loading" class="skeleton-searchbar"></div>
       <f7-searchbar v-else placeholder="Cari menu..." :clear-button="true" @input="onSearch" class="custom-searchbar" />
     </f7-block>
 
-    <!-- Category Section -->
     <f7-block class="category-container">
       <div v-if="loading" class="skeleton-chips">
         <div class="skeleton-chip" v-for="i in 5" :key="'chip-skeleton-' + i"></div>
@@ -28,7 +26,6 @@
       </div>
     </f7-block>
 
-    <!-- Menu Items Section -->
     <f7-block class="menu-container">
       <div v-if="loading" class="loading-state">
         <div class="skeleton-card" v-for="i in 6" :key="'skeleton-' + i"></div>
@@ -69,7 +66,6 @@
       </div>
     </f7-block>
 
-    <!-- Floating Order Summary -->
     <div v-show="cartStore.totalItems > 0" class="floating-order-summary" @click="goToOrderPage">
       <div class="order-summary-content">
         <div class="item-count">{{ cartStore.totalItems }} item</div>
@@ -80,7 +76,6 @@
       </div>
     </div>
 
-    <!-- Product Detail Popup -->
     <f7-popup v-model:opened="popupOpened" class="detail-product-popup">
       <div class="modal-content" v-if="selectedItem">
         <div class="modal-header">
@@ -118,7 +113,6 @@
       </div>
     </f7-popup>
 
-    <!-- Variant List Popup -->
     <f7-popup v-model:opened="variantListPopupOpened" class="variant-product-popup">
       <div class="modal-content" v-if="selectedVariants && selectedVariants.length">
         <div class="modal-header">

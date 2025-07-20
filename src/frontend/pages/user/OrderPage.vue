@@ -125,7 +125,6 @@
       </f7-page>
     </f7-popup>
 
-    <!-- Checkout Popup -->
     <f7-popup v-model:opened="checkoutPopupOpened" class="checkout-popup">
       <f7-page class="checkout-popup-bg">
         <f7-navbar title="Konfirmasi Pesanan" class="popup-navbar">
