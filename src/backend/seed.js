@@ -10,10 +10,9 @@ const menuItems = [
         kategori: ['Paling Laku'],
         favorite: false,
         deskripsi:
-            'Perpaduan sempurna antara kopi robusta, susu segar, dan gula aren asli yang memberikan rasa manis alami dengan aroma khas kopi yang nikmat.',
+            'Perpaduan sempurna antara kopi robusta, susu segar, dan gula aren asli.',
         tambahan: [
             { nama: 'Extra Shot Espresso', harga: 5000 },
-            { nama: 'Susu Almond', harga: 7000 },
         ],
     },
     {
@@ -23,10 +22,9 @@ const menuItems = [
         kategori: ['Kopi'],
         favorite: false,
         deskripsi:
-            'Latte dengan racikan khusus menggunakan biji kopi pilihan dan susu segar yang menghasilkan tekstur creamy dengan lapisan foam yang sempurna.',
+            'Latte dengan racikan khusus menggunakan biji kopi pilihan dan susu segar',
         tambahan: [
             { nama: 'Syrup Vanilla', harga: 4000 },
-            { nama: 'Topping Boba', harga: 6000 },
         ],
     },
     {

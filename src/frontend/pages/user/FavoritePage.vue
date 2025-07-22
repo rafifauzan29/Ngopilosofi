@@ -139,7 +139,13 @@ export default {
 
         if (!response.ok) throw new Error('Failed to fetch favorites');
 
-        favoriteItems.value = await response.json();
+        const items = await response.json();
+        favoriteItems.value = items.filter(item =>
+          item !== null &&
+          item !== undefined &&
+          item.gambar &&
+          item._id
+        );
 
         await Preferences.set({
           key: `userFavorites_${userId.value}`,
@@ -154,7 +160,12 @@ export default {
         });
 
         if (cachedFavorites) {
-          favoriteItems.value = JSON.parse(cachedFavorites);
+          favoriteItems.value = JSON.parse(cachedFavorites).filter(item =>
+            item !== null &&
+            item !== undefined &&
+            item.gambar &&
+            item._id
+          );
           f7.toast.create({
             text: 'Menggunakan data offline',
             closeTimeout: 3000,

@@ -483,17 +483,22 @@ export default {
     const checkFavoritesStatus = async () => {
       try {
         const { value: token } = await Preferences.get({ key: 'token' });
+        if (!token || !userId.value) return; 
+
         const response = await fetch('https://ngopilosofi-production.up.railway.app/api/favorite', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!response.ok) throw new Error('Failed to fetch favorites');
         const favorites = await response.json();
-        const favoriteIds = favorites.map(f => f._id);
+        const favoriteIds = favorites.map(f => f?._id).filter(Boolean); 
 
-        semuaMenu.value = semuaMenu.value.map(item => ({
-          ...item,
-          isFavorite: favoriteIds.includes(item._id)
-        }));
+        semuaMenu.value = semuaMenu.value.map(item => {
+          if (!item) return null; 
+          return {
+            ...item,
+            isFavorite: favoriteIds.includes(item._id)
+          };
+        }).filter(Boolean);
       } catch (error) {
         console.error('Error checking favorites status:', error);
       }
@@ -506,7 +511,7 @@ export default {
         if (!response.ok) throw new Error('Failed to fetch menu items');
 
         const data = await response.json();
-        semuaMenu.value = data;
+        semuaMenu.value = data.filter(item => item !== null && item._id);
 
         if (userId.value) await checkFavoritesStatus();
 
@@ -519,7 +524,7 @@ export default {
 
         const { value: cachedMenu } = await Preferences.get({ key: '/menu/all/' });
         if (cachedMenu) {
-          semuaMenu.value = JSON.parse(cachedMenu);
+          semuaMenu.value = JSON.parse(cachedMenu).filter(item => item !== null && item._id);
           f7.toast.create({
             text: 'Menggunakan data offline',
             closeTimeout: 3000,
@@ -1006,7 +1011,6 @@ export default {
   padding-top: 30px;
 }
 
-/* Loading State */
 .loading-state {
   padding: 16px;
   display: grid;
@@ -1032,7 +1036,6 @@ export default {
   }
 }
 
-/* Empty State */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -1072,7 +1075,6 @@ export default {
   box-shadow: 0 4px 12px rgba(51, 28, 44, 0.3);
 }
 
-/* Skeleton untuk Searchbar */
 .skeleton-searchbar {
   height: 44px;
   background: linear-gradient(90deg, #f2e9e1 25%, #e0d3c5 50%, #f2e9e1 75%);
@@ -1081,7 +1083,6 @@ export default {
   animation: shimmer 1.5s infinite;
 }
 
-/* Skeleton untuk Kategori Chips */
 .skeleton-chips {
   display: flex;
   gap: 8px;
